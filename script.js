@@ -1,592 +1,672 @@
 
-"use strict";
 
-// ==========================================
-// ELEMENTE
-// ==========================================
+/* =====================================================================
+   B) PARSER
+   ===================================================================== */
 
-const codeInput = document.getElementById("code-input");
-const cheatButtons = document.getElementById("cheat-buttons");
+function parseInput(text) {
+  if (text === '') return [];
 
-const output = document.getElementById("output");
-const statusText = document.getElementById("status-text");
-const loader = document.getElementById("loader");
+  return text.split(/\r\n|\r|\n/).map((source) => ({
+    source,
+    hash: hashString(source),
+    tokens: parseLine(source)
+  }));
+}
 
-const clearBtn = document.getElementById("clear-btn");
-const copyBtn = document.getElementById("copy-btn");
+function parseLine(lineText) {
+  const tokens = [];
+  const commandRegex = /<([a-z][a-z0-9-]*)(?:\s*:\s*"([^"]*)")?\s*>/gi;
 
-const wordForm = document.getElementById("word-form");
-const wordInput = document.getElementById("word-input");
-const wordFeedback = document.getElementById("word-feedback");
+  let lastIndex = 0;
+  let match;
 
-const chipList = document.getElementById("chip-list");
-const resetWordsBtn = document.getElementById("reset-words-btn");
-
-
-// ==========================================
-// DATEN
-// ==========================================
-
-let wordDatabase = [];
-let customWords = [];
-
-const buildingBlocks = [
-    "<shuffle-words>",
-    '<equality-operator: "==">',
-    '<equality-operator: "!=">',
-    "<random-word>",
-    "<random-noun>",
-    "<random-name>",
-    "<line-break>",
-    "<shuffle-lines>",
-    "<uppercase>",
-    "<lowercase>",
-    "<repeat>",
-    "<end>"
-];
-
-
-// ==========================================
-// WORTLISTE LADEN
-// ==========================================
-
-async function loadWordList() {
-
-    try {
-
-        if (statusText) {
-            statusText.textContent = "LADE WORTLISTE ...";
-        }
-
-        if (loader) {
-            loader.style.display = "block";
-        }
-
-        // words.json liegt im selben Ordner
-        // wie die HTML-Datei.
-
-        const response = await fetch(
-            new URL("./words.json", document.baseURI),
-            { cache: "no-cache" }
-        );
-
-        if (!response.ok) {
-            throw new Error(
-                `HTTP ${response.status}: ${response.statusText}`
-            );
-        }
-
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-            throw new Error(
-                "words.json enthält kein gültiges JSON-Array."
-            );
-        }
-
-        wordDatabase = [
-            ...new Set(
-                data
-                    .filter(word => typeof word === "string")
-                    .map(word => word.trim())
-                    .filter(Boolean)
-            )
-        ];
-
-        if (wordDatabase.length === 0) {
-            throw new Error("Die Wortliste enthält keine Wörter.");
-        }
-
-        if (statusText) {
-            statusText.textContent =
-                `WORTLISTE GELADEN: ${wordDatabase.length} WÖRTER`;
-        }
-
-        renderPoem();
-
-    } catch (error) {
-
-        console.error("WORTLISTEN-FEHLER:", error);
-
-        if (statusText) {
-            statusText.textContent =
-                "FEHLER: WORTLISTE NICHT GELADEN";
-        }
-
-    } finally {
-
-        if (loader) {
-            loader.style.display = "none";
-        }
-
+  while ((match = commandRegex.exec(lineText)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({
+        type: 'text',
+        value: lineText.slice(lastIndex, match.index)
+      });
     }
 
+    tokens.push(commandToToken(match[1], match[2]));
+    lastIndex = commandRegex.lastIndex;
+  }
+
+  if (lastIndex < lineText.length) {
+    tokens.push({
+      type: 'text',
+      value: lineText.slice(lastIndex)
+    });
+  }
+
+  return tokens;
 }
 
+function commandToToken(rawName, value) {
+  const name = rawName.toLowerCase();
 
-// ==========================================
-// ZUFALLSFUNKTIONEN
-// ==========================================
+  if (name === 'shuffle-words') {
+    return { type: 'shuffle' };
+  }
 
-function randomItem(array) {
+  if (name === 'br') {
+    return { type: 'br' };
+  }
 
-    if (!array || array.length === 0) {
-        return "";
+  const candidates = appState.operators.filter((op) => op.command === name);
+
+  if (candidates.length > 0) {
+    const operator = candidates.find((op) => op.symbol === value);
+
+    if (operator) {
+      return { type: 'operator', value: operator.text };
     }
 
-    const index = Math.floor(
-        Math.random() * array.length
-    );
+    const shown = (value === undefined) ? '(fehlt)' : '"' + value + '"';
 
-    return array[index];
+    return {
+      type: 'error',
+      value: '[Ungültiger Wert für ' + name + ': ' + shown + ']'
+    };
+  }
 
+  return {
+    type: 'error',
+    value: '[Unbekannter Befehl: ' + rawName + ']'
+  };
+}
+
+function hashString(str) {
+  let hash = 5381;
+
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+  }
+
+  return (hash >>> 0).toString(36) + '-' + str.length;
 }
 
 
-function getRandomWord() {
+/* =====================================================================
+   C) RENDERN
+   ===================================================================== */
 
-    return randomItem([
-        ...wordDatabase,
-        ...customWords
-    ]);
+function scheduleRender() {
+  clearTimeout(appState.renderTimerId);
 
+  appState.renderTimerId = setTimeout(() => {
+    renderOutput(parseInput(appState.dom.codeInput.value));
+  }, appState.config.debounceMs);
+}
+
+function renderOutput(lines) {
+  const oldRecords = appState.lineRecords;
+  const used = new Array(oldRecords.length).fill(false);
+  const newRecords = [];
+
+  lines.forEach((line, index) => {
+    let found = -1;
+
+    if (
+      index < oldRecords.length &&
+      !used[index] &&
+      oldRecords[index].hash === line.hash
+    ) {
+      found = index;
+    } else {
+      found = oldRecords.findIndex(
+        (record, i) => !used[i] && record.hash === line.hash
+      );
+    }
+
+    if (found >= 0) {
+      used[found] = true;
+      newRecords.push(oldRecords[found]);
+    } else {
+      newRecords.push(buildLineRecord(line));
+    }
+  });
+
+  oldRecords.forEach((record, i) => {
+    if (!used[i]) {
+      destroyLineRecord(record);
+    }
+  });
+
+  appState.lineRecords = newRecords;
+
+  const output = appState.dom.output;
+
+  const unchanged =
+    output.children.length === newRecords.length &&
+    newRecords.every((record, i) => output.children[i] === record.element);
+
+  if (!unchanged) {
+    output.replaceChildren(...newRecords.map((record) => record.element));
+  }
+}
+
+function buildLineRecord(line) {
+  const element = document.createElement('div');
+  element.className = 'line';
+
+  const record = {
+    hash: line.hash,
+    element,
+    instances: [],
+    parts: []
+  };
+
+  line.tokens.forEach((token) => {
+    switch (token.type) {
+      case 'text': {
+        const span = createTextSpan('text', token.value);
+        element.appendChild(span);
+        record.parts.push(token.value);
+        break;
+      }
+
+      case 'br': {
+        element.appendChild(document.createElement('br'));
+        record.parts.push('\n');
+        break;
+      }
+
+      case 'operator': {
+        element.appendChild(createTextSpan('operator', token.value));
+        record.parts.push(' ' + token.value + ' ');
+        break;
+      }
+
+      case 'error': {
+        element.appendChild(createTextSpan('error', token.value));
+        break;
+      }
+
+      case 'shuffle': {
+        const instance = createShuffleInstance();
+        element.appendChild(instance.wrapper);
+        record.instances.push(instance);
+        record.parts.push(instance);
+        break;
+      }
+    }
+  });
+
+  return record;
+}
+
+function createTextSpan(className, text) {
+  const span = document.createElement('span');
+  span.className = className;
+  span.textContent = text;
+  return span;
+}
+
+function destroyLineRecord(record) {
+  record.instances.forEach(stopTimer);
+  record.element.remove();
 }
 
 
-function getRandomNoun() {
+/* =====================================================================
+   D) SHUFFLE-INSTANZEN
+   ===================================================================== */
 
-    // Die German-Nouns-Datenbank enthält
-    // deutsche Substantive.
+function createShuffleInstance() {
+  const wrapper = document.createElement('span');
+  wrapper.className = 'shuffle';
 
-    return randomItem([
-        ...wordDatabase,
-        ...customWords
-    ]);
+  const wordEl = document.createElement('span');
+  wordEl.className = 'shuffle-word';
 
+  const holdBtn = document.createElement('button');
+  holdBtn.type = 'button';
+  holdBtn.className = 'hold-btn';
+
+  wrapper.append(wordEl, holdBtn);
+
+  const instance = {
+    wrapper,
+    wordEl,
+    holdBtn,
+    currentWord: '',
+    held: false,
+    intervalId: null,
+    active: false
+  };
+
+  holdBtn.addEventListener('click', () => toggleHold(instance));
+  updateHoldUi(instance);
+
+  if (appState.wordsLoaded) {
+    activateShuffleInstance(instance);
+  } else {
+    wordEl.textContent = '…';
+    holdBtn.disabled = true;
+  }
+
+  return instance;
+}
+
+function activateShuffleInstance(instance) {
+  instance.active = true;
+  instance.holdBtn.disabled = false;
+  setInstanceWord(instance, pickRandomWord(null));
+  startTimer(instance);
+}
+
+function activateAllInstances() {
+  appState.lineRecords.forEach((record) => {
+    record.instances.forEach((instance) => {
+      if (!instance.active) {
+        activateShuffleInstance(instance);
+      }
+    });
+  });
+}
+
+function startTimer(instance) {
+  stopTimer(instance);
+
+  instance.intervalId = setInterval(() => {
+    setInstanceWord(instance, pickRandomWord(instance.currentWord));
+  }, appState.config.shuffleIntervalMs);
+}
+
+function stopTimer(instance) {
+  if (instance.intervalId !== null) {
+    clearInterval(instance.intervalId);
+    instance.intervalId = null;
+  }
+}
+
+function toggleHold(instance) {
+  instance.held = !instance.held;
+
+  if (instance.held) {
+    stopTimer(instance);
+  } else {
+    startTimer(instance);
+  }
+
+  updateHoldUi(instance);
+}
+
+function updateHoldUi(instance) {
+  instance.holdBtn.textContent = instance.held ? 'held' : 'hold';
+  instance.holdBtn.title = instance.held
+    ? 'Wieder rotieren lassen'
+    : 'Wort einfrieren';
+
+  instance.holdBtn.setAttribute('aria-pressed', String(instance.held));
+  instance.wrapper.classList.toggle('is-held', instance.held);
+}
+
+function setInstanceWord(instance, word) {
+  instance.currentWord = word;
+  instance.wordEl.textContent = word;
+
+  instance.wordEl.classList.remove('flash');
+  void instance.wordEl.offsetWidth;
+  instance.wordEl.classList.add('flash');
+}
+
+function pickRandomWord(currentWord) {
+  const words = getAllWords();
+
+  if (words.length === 0) return '…';
+  if (words.length === 1) return words[0];
+
+  const candidates = words.filter((word) => word !== currentWord);
+
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 
-function getRandomName() {
+/* =====================================================================
+   E) WORTLISTE
+   ===================================================================== */
 
-    // Ohne separate Namensdatenbank
-    // ist keine echte Namensauswahl möglich.
-
-    return randomItem(customWords);
-
+function getAllWords() {
+  return Array.from(new Set(appState.baseWords.concat(appState.customWords)));
 }
 
+async function loadBaseWords() {
+  setLoading(true);
 
-// ==========================================
-// BAUSTEINE ERZEUGEN
-// ==========================================
-
-function createCheatButtons() {
-
-    if (!cheatButtons) return;
-
-    cheatButtons.innerHTML = "";
-
-    buildingBlocks.forEach(block => {
-
-        const button = document.createElement("button");
-
-        button.type = "button";
-        button.textContent = block;
-
-        button.addEventListener("click", () => {
-            insertAtCursor(block);
-        });
-
-        cheatButtons.appendChild(button);
-
+  try {
+    const response = await fetch(appState.config.wordsUrl, {
+      cache: 'no-cache'
     });
 
+    if (!response.ok) {
+      throw new Error('HTTP ' + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error('words.json ist kein Array');
+    }
+
+    const words = data
+      .filter((entry) => typeof entry === 'string')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+
+    if (words.length === 0) {
+      throw new Error('words.json enthält keine Wörter');
+    }
+
+    appState.baseWords = words;
+    appState.usingFallback = false;
+  } catch (error) {
+    console.warn('Wortliste konnte nicht geladen werden:', error);
+    appState.baseWords = appState.config.fallbackWords.slice();
+    appState.usingFallback = true;
+  }
+
+  appState.wordsLoaded = true;
+  setLoading(false);
+  updateStatus();
+  activateAllInstances();
+}
+
+function setLoading(isLoading) {
+  appState.dom.loader.hidden = !isLoading;
+
+  if (isLoading) {
+    appState.dom.statusText.textContent = 'Lade Wortliste …';
+    appState.dom.statusText.classList.remove('is-warning');
+  }
+}
+
+function updateStatus() {
+  const dom = appState.dom;
+
+  if (!appState.wordsLoaded) {
+    dom.statusText.textContent = 'Lade Wortliste …';
+    return;
+  }
+
+  const total = getAllWords().length;
+
+  if (appState.usingFallback) {
+    dom.statusText.textContent =
+      '⚠ Wortliste konnte nicht geladen werden, nutze Fallback (' +
+      total +
+      ' Wörter)';
+
+    dom.statusText.classList.add('is-warning');
+  } else {
+    dom.statusText.textContent =
+      'Wortliste geladen: ' +
+      total +
+      ' Wörter (davon ' +
+      appState.customWords.length +
+      ' eigene)';
+
+    dom.statusText.classList.remove('is-warning');
+  }
+}
+
+function loadCustomWords() {
+  try {
+    const raw = localStorage.getItem(appState.config.storageKey);
+
+    if (!raw) return [];
+
+    const data = JSON.parse(raw);
+
+    if (!Array.isArray(data)) return [];
+
+    return data.filter(
+      (entry) => typeof entry === 'string' && entry.trim() !== ''
+    );
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveCustomWords() {
+  try {
+    localStorage.setItem(
+      appState.config.storageKey,
+      JSON.stringify(appState.customWords)
+    );
+  } catch (error) {
+    console.warn('Eigene Wörter konnten nicht gespeichert werden:', error);
+  }
+}
+
+function addCustomWord(rawWord) {
+  const word = rawWord.trim().replace(/\s+/g, ' ');
+
+  if (word === '') {
+    return { ok: false, message: 'Bitte ein Wort eingeben.' };
+  }
+
+  if (word.length > appState.config.maxWordLength) {
+    return {
+      ok: false,
+      message: 'Maximal ' + appState.config.maxWordLength + ' Zeichen.'
+    };
+  }
+
+  if (getAllWords().includes(word)) {
+    return {
+      ok: false,
+      message: '„' + word + '" ist schon in der Wortliste.'
+    };
+  }
+
+  appState.customWords.push(word);
+  saveCustomWords();
+  renderChips();
+  updateStatus();
+
+  return { ok: true, message: '„' + word + '" hinzugefügt.' };
+}
+
+function removeCustomWord(word) {
+  appState.customWords = appState.customWords.filter(
+    (entry) => entry !== word
+  );
+
+  saveCustomWords();
+  renderChips();
+  updateStatus();
+}
+
+function renderChips() {
+  const list = appState.dom.chipList;
+  list.replaceChildren();
+
+  appState.customWords.forEach((word) => {
+    const chip = document.createElement('li');
+    chip.className = 'chip';
+
+    const label = document.createElement('span');
+    label.textContent = word;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'chip-remove';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute(
+      'aria-label',
+      'Wort „' + word + '" entfernen'
+    );
+
+    removeBtn.addEventListener('click', () => removeCustomWord(word));
+
+    chip.append(label, removeBtn);
+    list.appendChild(chip);
+  });
+
+  appState.dom.resetWordsBtn.disabled = appState.customWords.length === 0;
+}
+
+function showFeedback(message, isError) {
+  appState.dom.wordFeedback.textContent = message;
+  appState.dom.wordFeedback.classList.toggle('is-error', Boolean(isError));
 }
 
 
-// ==========================================
-// BAUSTEINE EINFÜGEN
-// ==========================================
+/* =====================================================================
+   F) EVENT-HANDLER
+   ===================================================================== */
 
-function insertAtCursor(text) {
+function handleAddWord(event) {
+  event.preventDefault();
 
-    if (!codeInput) return;
+  const result = addCustomWord(appState.dom.wordInput.value);
 
-    const start = codeInput.selectionStart;
-    const end = codeInput.selectionEnd;
+  showFeedback(result.message, !result.ok);
 
-    const currentText = codeInput.value;
+  if (result.ok) {
+    appState.dom.wordInput.value = '';
+  }
 
-    codeInput.value =
-        currentText.substring(0, start) +
-        text +
-        currentText.substring(end);
+  appState.dom.wordInput.focus();
+}
 
-    const newPosition = start + text.length;
+function handleResetWords() {
+  if (appState.customWords.length === 0) return;
 
-    codeInput.focus();
+  if (!window.confirm('Alle selbst hinzugefügten Wörter löschen?')) {
+    return;
+  }
 
-    codeInput.setSelectionRange(
-        newPosition,
-        newPosition
-    );
+  appState.customWords = [];
+  saveCustomWords();
+  renderChips();
+  updateStatus();
+  showFeedback('Eigene Wörter zurückgesetzt.', false);
+}
 
-    codeInput.dispatchEvent(
-        new Event("input", { bubbles: true })
-    );
+function handleClear() {
+  clearTimeout(appState.renderTimerId);
 
+  appState.dom.codeInput.value = '';
+  renderOutput(parseInput(''));
+  appState.dom.codeInput.focus();
+}
+
+async function handleCopy() {
+  const text = getOutputText();
+  let success = false;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    success = true;
+  } catch (error) {
+    success = fallbackCopy(text);
+  }
+
+  flashButtonLabel(
+    appState.dom.copyBtn,
+    success ? 'Kopiert ✓' : 'Fehlgeschlagen',
+    1500
+  );
+}
+
+function getOutputText() {
+  const text = appState.lineRecords
+    .map((record) =>
+      record.parts
+        .map((part) =>
+          typeof part === 'string'
+            ? part
+            : ' ' + part.currentWord + ' '
+        )
+        .join('')
+    )
+    .join('\n');
+
+  return text
+    .replace(/ {2,}/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .trim();
+}
+
+function fallbackCopy(text) {
+  const helper = document.createElement('textarea');
+
+  helper.value = text;
+  helper.style.position = 'fixed';
+  helper.style.opacity = '0';
+
+  document.body.appendChild(helper);
+  helper.select();
+
+  let ok = false;
+
+  try {
+    ok = document.execCommand('copy');
+  } catch (error) {
+    ok = false;
+  }
+
+  helper.remove();
+  return ok;
+}
+
+function flashButtonLabel(button, label, durationMs) {
+  const original = button.dataset.originalLabel || button.textContent;
+
+  button.dataset.originalLabel = original;
+  button.textContent = label;
+
+  setTimeout(() => {
+    button.textContent = original;
+  }, durationMs);
 }
 
 
-// ==========================================
-// SHUFFLE
-// ==========================================
+/* =====================================================================
+   G) CHEAT SHEET
+   ===================================================================== */
 
-function shuffleArray(array) {
-
-    const result = [...array];
-
-    for (let i = result.length - 1; i > 0; i--) {
-
-        const j = Math.floor(
-            Math.random() * (i + 1)
-        );
-
-        [result[i], result[j]] =
-            [result[j], result[i]];
-
+function buildCheatSheet() {
+  const rows = [
+    {
+      code: '<shuffle-words>',
+      desc: 'Zufallswort (wechselt alle 10 s, mit hold)'
+    },
+    {
+      code: '<br>',
+      desc: 'Zeilenumbruch'
     }
-
-    return result;
-
-}
-
-
-// ==========================================
-// GEDICHT GENERIEREN
-// ==========================================
-
-function generatePoem(code) {
-
-    let poem = code;
-
-    // Zufallswörter einsetzen
-
-    poem = poem.replace(
-        /<random-word>/gi,
-        () => getRandomWord() || "[KEIN WORT]"
-    );
-
-    poem = poem.replace(
-        /<random-noun>/gi,
-        () => getRandomNoun() || "[KEIN SUBSTANTIV]"
-    );
-
-    poem = poem.replace(
-        /<random-name>/gi,
-        () => getRandomName() || "[KEIN NAME]"
-    );
-
-    // Gleichheitsoperatoren
-
-    poem = poem.replace(
-        /<equality-operator:\s*"==">/gi,
-        "=="
-    );
-
-    poem = poem.replace(
-        /<equality-operator:\s*"!=">/gi,
-        "!="
-    );
-
-    // Zeilenumbrüche
-
-    poem = poem.replace(
-        /<line-break>/gi,
-        "\n"
-    );
-
-    // Shuffle der Wörter
-
-    if (/<shuffle-words>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<shuffle-words>/gi,
-            ""
-        );
-
-        const words = poem.trim().split(/\s+/);
-
-        poem = shuffleArray(words).join(" ");
-
-    }
-
-    // Shuffle der Zeilen
-
-    if (/<shuffle-lines>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<shuffle-lines>/gi,
-            ""
-        );
-
-        poem = shuffleArray(
-            poem.split("\n")
-        ).join("\n");
-
-    }
-
-    // Großschreibung
-
-    if (/<uppercase>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<uppercase>/gi,
-            ""
-        );
-
-        poem = poem.toUpperCase();
-
-    }
-
-    // Kleinschreibung
-
-    if (/<lowercase>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<lowercase>/gi,
-            ""
-        );
-
-        poem = poem.toLowerCase();
-
-    }
-
-    // Wiederholung der letzten Zeile
-
-    if (/<repeat>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<repeat>/gi,
-            ""
-        );
-
-        const lines = poem.split("\n");
-
-        const lastLine = [...lines]
-            .reverse()
-            .find(line => line.trim() !== "");
-
-        if (lastLine) {
-            poem += "\n" + lastLine;
-        }
-
-    }
-
-    // Ende der Ausführung
-
-    const endPosition = poem.search(/<end>/i);
-
-    if (endPosition !== -1) {
-        poem = poem.substring(0, endPosition);
-    }
-
-    return poem.trim();
-
-}
-
-
-// ==========================================
-// GEDICHT AUSGEBEN
-// ==========================================
-
-function renderPoem() {
-
-    if (!codeInput || !output) return;
-
-    const code = codeInput.value;
-
-    if (!code.trim()) {
-
-        output.textContent = "";
-
-        const placeholder = document.createElement("span");
-
-        placeholder.className = "preview-placeholder";
-        placeholder.textContent = "VORSCHAU";
-
-        output.appendChild(placeholder);
-
-        return;
-
-    }
-
-    const poem = generatePoem(code);
-
-    // Text statt innerHTML verwenden:
-    // verhindert die Interpretation von HTML.
-
-    output.textContent = poem;
-
-}
-
-
-// ==========================================
-// LIVE-CODING
-// ==========================================
-
-if (codeInput) {
-
-    codeInput.addEventListener(
-        "input",
-        renderPoem
-    );
-
-}
-
-
-// ==========================================
-// EINGABE LEEREN
-// ==========================================
-
-if (clearBtn) {
-
-    clearBtn.addEventListener("click", () => {
-
-        if (codeInput) {
-            codeInput.value = "";
-        }
-
-        renderPoem();
-
+  ];
+
+  appState.operators.forEach((op) => {
+    rows.push({
+      code: '<' + op.command + ': "' + op.symbol + '">',
+      desc: op.text
     });
+  });
 
+  rows.forEach((row) => {
+    const tr = document.createElement('tr');
+
+    const tdCode = document.createElement('td');
+    const code = document.createElement('code');
+    code.textContent = row.code;
+    tdCode.appendChild(code);
+
+    const tdDesc = document.createElement('td');
+    tdDesc.textContent = row.desc;
+
+    tr.append(tdCode, tdDesc);
+    appState.dom.cheatBody.appendChild(tr);
+  });
 }
 
 
-// ==========================================
-// AUSGABE KOPIEREN
-// ==========================================
-
-if (copyBtn) {
-
-    copyBtn.addEventListener("click", async () => {
-
-        const poem = output?.textContent || "";
-
-        try {
-
-            await navigator.clipboard.writeText(poem);
-
-            copyBtn.textContent = "KOPIERT!";
-
-            setTimeout(() => {
-                copyBtn.textContent = "AUSGABE KOPIEREN";
-            }, 1500);
-
-        } catch (error) {
-
-            console.error("KOPIERFEHLER:", error);
-
-            copyBtn.textContent = "KOPIEREN FEHLGESCHLAGEN";
-
-        }
-
-    });
-
-}
-
-
-// ==========================================
-// EIGENE WÖRTER
-// ==========================================
-
-function renderCustomWords() {
-
-    if (!chipList) return;
-
-    chipList.innerHTML = "";
-
-    customWords.forEach(word => {
-
-        const li = document.createElement("li");
-
-        li.textContent = word;
-
-        chipList.appendChild(li);
-
-    });
-
-}
-
-
-if (wordForm) {
-
-    wordForm.addEventListener("submit", event => {
-
-        event.preventDefault();
-
-        const word = wordInput.value.trim();
-
-        if (!word) return;
-
-        if (customWords.includes(word)) {
-
-            if (wordFeedback) {
-                wordFeedback.textContent =
-                    "DIESES WORT EXISTIERT BEREITS.";
-            }
-
-            return;
-
-        }
-
-        customWords.push(word);
-
-        wordInput.value = "";
-
-        if (wordFeedback) {
-            wordFeedback.textContent =
-                "WORT HINZUGEFÜGT.";
-        }
-
-        renderCustomWords();
-        renderPoem();
-
-    });
-
-}
-
-
-// ==========================================
-// EIGENE WÖRTER ZURÜCKSETZEN
-// ==========================================
-
-if (resetWordsBtn) {
-
-    resetWordsBtn.addEventListener("click", () => {
-
-        customWords = [];
-
-        renderCustomWords();
-        renderPoem();
-
-        if (wordFeedback) {
-            wordFeedback.textContent =
-                "EIGENE WÖRTER ZURÜCKGESETZT.";
-        }
-
-    });
-
-}
-
-
-// ==========================================
-// START
-// ==========================================
-
-createCheatButtons();
-
-renderCustomWords();
-
-loadWordList();
+/* =====================================================================
+   LOS GEHT'S
+   ===================================================================== */
+init();
