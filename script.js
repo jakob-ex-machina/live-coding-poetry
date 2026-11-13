@@ -1,449 +1,592 @@
-/* =====================================================================
-   Live Coding Poetry – script.js
-   Vollständig, inkl. buildCheatButtons() (war in der letzten Version
-   versehentlich verloren gegangen – dadurch startete die App nicht).
-   ===================================================================== */
 
-'use strict';
+"use strict";
 
-/* ---------------------------------------------------------------------
-   Zentrales Zustandsobjekt – die einzige globale Variable.
-   --------------------------------------------------------------------- */
-const appState = {
-  config: {
-    shuffleIntervalMs: 10000,
-    debounceMs: 300,
-    wordsUrl: './words.json',
-    storageKey: 'liveCodingPoetry.customWords',
-    maxWordLength: 60,
-    fallbackWords: [
-      'Haus', 'Baum', 'Fluss', 'Sonne', 'Mond', 'Nebel', 'Stein', 'Wind',
-      'Anna', 'Berlin', 'Stille', 'Fenster', 'Meer', 'Schatten', 'Licht',
-      'Brücke', 'Herbst', 'Glas', 'Echo', 'Wolke'
-    ]
-  },
+// ==========================================
+// ELEMENTE
+// ==========================================
 
-  operators: [
-    { command: 'equality-operator',    symbol: '==', text: 'wie' },
-    { command: 'comparison-operator',  symbol: '>',  text: 'größer als' },
-    { command: 'comparison-operator',  symbol: '<',  text: 'kleiner als' },
-    { command: 'comparison-operator',  symbol: '>=', text: 'größer oder gleich' },
-    { command: 'comparison-operator',  symbol: '<=', text: 'kleiner oder gleich' },
-    { command: 'similarity-operator',  symbol: '~',  text: 'ähnlich wie' },
-    { command: 'analogy-operator',     symbol: '~~', text: 'so wie' },
-    { command: 'addition-operator',    symbol: '+',  text: 'und' },
-    { command: 'alternative-operator', symbol: '||', text: 'oder' },
-    { command: 'negation-operator',    symbol: '!=', text: 'anders als' },
-    { command: 'sequence-operator',    symbol: '>>', text: 'dann' }
-  ],
+const codeInput = document.getElementById("code-input");
+const cheatButtons = document.getElementById("cheat-buttons");
 
-  baseWords: [],
-  customWords: [],
-  wordsLoaded: false,
-  usingFallback: false,
+const output = document.getElementById("output");
+const statusText = document.getElementById("status-text");
+const loader = document.getElementById("loader");
 
-  lineRecords: [],
-  renderTimerId: null,
-  dom: {}
-};
+const clearBtn = document.getElementById("clear-btn");
+const copyBtn = document.getElementById("copy-btn");
+
+const wordForm = document.getElementById("word-form");
+const wordInput = document.getElementById("word-input");
+const wordFeedback = document.getElementById("word-feedback");
+
+const chipList = document.getElementById("chip-list");
+const resetWordsBtn = document.getElementById("reset-words-btn");
 
 
-/* =====================================================================
-   A) START
-   ===================================================================== */
-function init() {
-  cacheDomElements();
-  buildCheatButtons();     // <-- war vorher nicht definiert
+// ==========================================
+// DATEN
+// ==========================================
 
-  appState.customWords = loadCustomWords();
-  renderChips();
-  updateStatus();
+let wordDatabase = [];
+let customWords = [];
 
-  bindEvents();
-  renderOutput(parseInput(appState.dom.codeInput.value));
-
-  loadBaseWords();
-}
-
-function cacheDomElements() {
-  const byId = (id) => document.getElementById(id);
-  appState.dom = {
-    codeInput:     byId('code-input'),
-    output:        byId('output'),
-    clearBtn:      byId('clear-btn'),
-    copyBtn:       byId('copy-btn'),
-    wordForm:      byId('word-form'),
-    wordInput:     byId('word-input'),
-    wordFeedback:  byId('word-feedback'),
-    chipList:      byId('chip-list'),
-    resetWordsBtn: byId('reset-words-btn'),
-    statusText:    byId('status-text'),
-    loader:        byId('loader'),
-    cheatButtons:  byId('cheat-buttons')
-  };
-}
-
-function bindEvents() {
-  const dom = appState.dom;
-  dom.codeInput.addEventListener('input', scheduleRender);
-  dom.clearBtn.addEventListener('click', handleClear);
-  dom.copyBtn.addEventListener('click', handleCopy);
-  dom.wordForm.addEventListener('submit', handleAddWord);
-  dom.resetWordsBtn.addEventListener('click', handleResetWords);
-}
+const buildingBlocks = [
+    "<shuffle-words>",
+    '<equality-operator: "==">',
+    '<equality-operator: "!=">',
+    "<random-word>",
+    "<random-noun>",
+    "<random-name>",
+    "<line-break>",
+    "<shuffle-lines>",
+    "<uppercase>",
+    "<lowercase>",
+    "<repeat>",
+    "<end>"
+];
 
 
-/* =====================================================================
-   A2) CHEAT-SHEET-BUTTONS – fügen Befehl an Cursor-Position ein
-   ===================================================================== */
-function buildCheatButtons() {
-  const container = appState.dom.cheatButtons;
-  if (!container) return;
-  container.replaceChildren();
+// ==========================================
+// WORTLISTE LADEN
+// ==========================================
 
-  // Baustein-Liste: shuffle, br und alle Operatoren
-  const items = [
-    { code: '<shuffle-words>', label: 'shuffle-words' },
-    { code: '<br>',            label: 'br' }
-  ];
-  appState.operators.forEach((op) => {
-    items.push({ code: '<' + op.command + ': "' + op.symbol + '">', label: op.text });
-  });
+async function loadWordList() {
 
-  items.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cheat-btn';
-    btn.textContent = item.code;
-    btn.title = item.label;
-    btn.addEventListener('click', () => insertAtCursor(item.code));
-    container.appendChild(btn);
-  });
-}
+    try {
 
-/** Fügt Text an der aktuellen Cursor-Position im Code-Feld ein. */
-function insertAtCursor(text) {
-  const input = appState.dom.codeInput;
-  const start = input.selectionStart ?? input.value.length;
-  const end   = input.selectionEnd   ?? input.value.length;
-  const before = input.value.slice(0, start);
-  const after  = input.value.slice(end);
-  input.value = before + text + after;
-  const newPos = start + text.length;
-  input.setSelectionRange(newPos, newPos);
-  input.focus();
-  scheduleRender();
-}
+        if (statusText) {
+            statusText.textContent = "LADE WORTLISTE ...";
+        }
 
+        if (loader) {
+            loader.style.display = "block";
+        }
 
-/* =====================================================================
-   B) PARSER
-   ===================================================================== */
-function parseInput(text) {
-  if (text === '') return [];
-  return text.split(/\r\n|\r|\n/).map((source) => ({
-    source: source,
-    hash: hashString(source),
-    tokens: parseLine(source)
-  }));
-}
+        // words.json liegt im selben Ordner
+        // wie die HTML-Datei.
 
-function parseLine(lineText) {
-  const tokens = [];
-  const commandRegex = /<([a-z][a-z0-9-]*)(?:\s*:\s*"([^"]*)")?\s*>/gi;
-  let lastIndex = 0;
-  let match;
+        const response = await fetch(
+            new URL("./words.json", document.baseURI),
+            { cache: "no-cache" }
+        );
 
-  while ((match = commandRegex.exec(lineText)) !== null) {
-    if (match.index > lastIndex) {
-      tokens.push({ type: 'text', value: lineText.slice(lastIndex, match.index) });
-    }
-    tokens.push(commandToToken(match[1], match[2]));
-    lastIndex = commandRegex.lastIndex;
-  }
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`
+            );
+        }
 
-  if (lastIndex < lineText.length) {
-    tokens.push({ type: 'text', value: lineText.slice(lastIndex) });
-  }
-  return tokens;
-}
+        const data = await response.json();
 
-function commandToToken(rawName, value) {
-  const name = rawName.toLowerCase();
+        if (!Array.isArray(data)) {
+            throw new Error(
+                "words.json enthält kein gültiges JSON-Array."
+            );
+        }
 
-  if (name === 'shuffle-words') return { type: 'shuffle' };
-  if (name === 'br')            return { type: 'br' };
+        wordDatabase = [
+            ...new Set(
+                data
+                    .filter(word => typeof word === "string")
+                    .map(word => word.trim())
+                    .filter(Boolean)
+            )
+        ];
 
-  const candidates = appState.operators.filter((op) => op.command === name);
-  if (candidates.length > 0) {
-    const operator = candidates.find((op) => op.symbol === value);
-    if (operator) return { type: 'operator', value: operator.text };
-    const shown = (value === undefined) ? '(fehlt)' : '"' + value + '"';
-    return { type: 'error', value: '[Ungültiger Wert für ' + name + ': ' + shown + ']' };
-  }
+        if (wordDatabase.length === 0) {
+            throw new Error("Die Wortliste enthält keine Wörter.");
+        }
 
-  return { type: 'error', value: '[Unbekannter Befehl: ' + rawName + ']' };
-}
+        if (statusText) {
+            statusText.textContent =
+                `WORTLISTE GELADEN: ${wordDatabase.length} WÖRTER`;
+        }
 
-function hashString(str) {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
-  }
-  return (hash >>> 0).toString(36) + '-' + str.length;
-}
+        renderPoem();
 
+    } catch (error) {
 
-/* =====================================================================
-   C) RENDERN
-   ===================================================================== */
-function scheduleRender() {
-  clearTimeout(appState.renderTimerId);
-  appState.renderTimerId = setTimeout(() => {
-    renderOutput(parseInput(appState.dom.codeInput.value));
-  }, appState.config.debounceMs);
-}
+        console.error("WORTLISTEN-FEHLER:", error);
 
-function renderOutput(lines) {
-  const oldRecords = appState.lineRecords;
-  const used = new Array(oldRecords.length).fill(false);
-  const newRecords = [];
+        if (statusText) {
+            statusText.textContent =
+                "FEHLER: WORTLISTE NICHT GELADEN";
+        }
 
-  lines.forEach((line, index) => {
-    let found = -1;
-    if (index < oldRecords.length && !used[index] && oldRecords[index].hash === line.hash) {
-      found = index;
-    } else {
-      found = oldRecords.findIndex((record, i) => !used[i] && record.hash === line.hash);
+    } finally {
+
+        if (loader) {
+            loader.style.display = "none";
+        }
+
     }
 
-    if (found >= 0) {
-      used[found] = true;
-      newRecords.push(oldRecords[found]);
-    } else {
-      newRecords.push(buildLineRecord(line));
+}
+
+
+// ==========================================
+// ZUFALLSFUNKTIONEN
+// ==========================================
+
+function randomItem(array) {
+
+    if (!array || array.length === 0) {
+        return "";
     }
-  });
 
-  oldRecords.forEach((record, i) => {
-    if (!used[i]) destroyLineRecord(record);
-  });
+    const index = Math.floor(
+        Math.random() * array.length
+    );
 
-  appState.lineRecords = newRecords;
+    return array[index];
 
-  const output = appState.dom.output;
-  const unchanged =
-    output.children.length === newRecords.length &&
-    newRecords.every((record, i) => output.children[i] === record.element);
-  if (!unchanged) {
-    output.replaceChildren(...newRecords.map((record) => record.element));
-  }
-}
-
-function buildLineRecord(line) {
-  const element = document.createElement('div');
-  element.className = 'line';
-  const record = { hash: line.hash, element: element, instances: [], parts: [] };
-
-  line.tokens.forEach((token) => {
-    switch (token.type) {
-      case 'text': {
-        const span = createTextSpan('text', token.value);
-        element.appendChild(span);
-        record.parts.push(token.value);
-        break;
-      }
-      case 'br': {
-        element.appendChild(document.createElement('br'));
-        record.parts.push('\n');
-        break;
-      }
-      case 'operator': {
-        element.appendChild(createTextSpan('operator', token.value));
-        record.parts.push(' ' + token.value + ' ');
-        break;
-      }
-      case 'error': {
-        element.appendChild(createTextSpan('error', token.value));
-        break;
-      }
-      case 'shuffle': {
-        const instance = createShuffleInstance();
-        element.appendChild(instance.wrapper);
-        record.instances.push(instance);
-        record.parts.push(instance);
-        break;
-      }
-    }
-  });
-
-  return record;
-}
-
-function createTextSpan(className, text) {
-  const span = document.createElement('span');
-  span.className = className;
-  span.textContent = text;
-  return span;
-}
-
-function destroyLineRecord(record) {
-  record.instances.forEach(stopTimer);
-  record.element.remove();
 }
 
 
-/* =====================================================================
-   D) SHUFFLE-INSTANZEN
-   ===================================================================== */
-function createShuffleInstance() {
-  const wrapper = document.createElement('span');
-  wrapper.className = 'shuffle';
+function getRandomWord() {
 
-  const wordEl = document.createElement('span');
-  wordEl.className = 'shuffle-word';
+    return randomItem([
+        ...wordDatabase,
+        ...customWords
+    ]);
 
-  const holdBtn = document.createElement('button');
-  holdBtn.type = 'button';
-  holdBtn.className = 'hold-btn';
-
-  wrapper.append(wordEl, holdBtn);
-
-  const instance = {
-    wrapper: wrapper,
-    wordEl: wordEl,
-    holdBtn: holdBtn,
-    currentWord: '',
-    held: false,
-    intervalId: null,
-    active: false
-  };
-
-  holdBtn.addEventListener('click', () => toggleHold(instance));
-  updateHoldUi(instance);
-
-  if (appState.wordsLoaded) {
-    activateShuffleInstance(instance);
-  } else {
-    wordEl.textContent = '…';
-    holdBtn.disabled = true;
-  }
-  return instance;
 }
 
-function activateShuffleInstance(instance) {
-  instance.active = true;
-  instance.holdBtn.disabled = false;
-  setInstanceWord(instance, pickRandomWord(null));
-  startTimer(instance);
+
+function getRandomNoun() {
+
+    // Die German-Nouns-Datenbank enthält
+    // deutsche Substantive.
+
+    return randomItem([
+        ...wordDatabase,
+        ...customWords
+    ]);
+
 }
 
-function activateAllInstances() {
-  appState.lineRecords.forEach((record) => {
-    record.instances.forEach((instance) => {
-      if (!instance.active) activateShuffleInstance(instance);
+
+function getRandomName() {
+
+    // Ohne separate Namensdatenbank
+    // ist keine echte Namensauswahl möglich.
+
+    return randomItem(customWords);
+
+}
+
+
+// ==========================================
+// BAUSTEINE ERZEUGEN
+// ==========================================
+
+function createCheatButtons() {
+
+    if (!cheatButtons) return;
+
+    cheatButtons.innerHTML = "";
+
+    buildingBlocks.forEach(block => {
+
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.textContent = block;
+
+        button.addEventListener("click", () => {
+            insertAtCursor(block);
+        });
+
+        cheatButtons.appendChild(button);
+
     });
-  });
-}
 
-function startTimer(instance) {
-  stopTimer(instance);
-  instance.intervalId = setInterval(() => {
-    setInstanceWord(instance, pickRandomWord(instance.currentWord));
-  }, appState.config.shuffleIntervalMs);
-}
-
-function stopTimer(instance) {
-  if (instance.intervalId !== null) {
-    clearInterval(instance.intervalId);
-    instance.intervalId = null;
-  }
-}
-
-function toggleHold(instance) {
-  instance.held = !instance.held;
-  if (instance.held) {
-    stopTimer(instance);
-  } else {
-    startTimer(instance);
-  }
-  updateHoldUi(instance);
-}
-
-function updateHoldUi(instance) {
-  instance.holdBtn.textContent = instance.held ? 'HELD' : 'HOLD';
-  instance.holdBtn.title = instance.held ? 'Wieder rotieren lassen' : 'Wort einfrieren';
-  instance.holdBtn.setAttribute('aria-pressed', String(instance.held));
-  instance.wrapper.classList.toggle('is-held', instance.held);
-}
-
-function setInstanceWord(instance, word) {
-  instance.currentWord = word;
-  instance.wordEl.textContent = word;
-  instance.wordEl.classList.remove('flash');
-  void instance.wordEl.offsetWidth;
-  instance.wordEl.classList.add('flash');
-}
-
-function pickRandomWord(currentWord) {
-  const words = getAllWords();
-  if (words.length === 0) return '…';
-  if (words.length === 1) return words[0];
-  const candidates = words.filter((word) => word !== currentWord);
-  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 
-/* =====================================================================
-   E) WORTLISTE
-   ===================================================================== */
-function getAllWords() {
-  return Array.from(new Set(appState.baseWords.concat(appState.customWords)));
+// ==========================================
+// BAUSTEINE EINFÜGEN
+// ==========================================
+
+function insertAtCursor(text) {
+
+    if (!codeInput) return;
+
+    const start = codeInput.selectionStart;
+    const end = codeInput.selectionEnd;
+
+    const currentText = codeInput.value;
+
+    codeInput.value =
+        currentText.substring(0, start) +
+        text +
+        currentText.substring(end);
+
+    const newPosition = start + text.length;
+
+    codeInput.focus();
+
+    codeInput.setSelectionRange(
+        newPosition,
+        newPosition
+    );
+
+    codeInput.dispatchEvent(
+        new Event("input", { bubbles: true })
+    );
+
 }
 
-async function loadBaseWords() {
-  setLoading(true);
-  try {
-    const response = await fetch(appState.config.wordsUrl, { cache: 'no-cache' });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
 
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('words.json ist kein Array');
+// ==========================================
+// SHUFFLE
+// ==========================================
 
-    const words = data
-      .filter((entry) => typeof entry === 'string')
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
-    if (words.length === 0) throw new Error('words.json enthält keine Wörter');
+function shuffleArray(array) {
 
-    appState.baseWords = words;
-    appState.usingFallback = false;
-  } catch (error) {
-    console.warn('Wortliste konnte nicht geladen werden:', error);
-    appState.baseWords = appState.config.fallbackWords.slice();
-    appState.usingFallback = true;
-  }
+    const result = [...array];
 
-  appState.wordsLoaded = true;
-  setLoading(false);
-  updateStatus();
-  activateAllInstances();
+    for (let i = result.length - 1; i > 0; i--) {
+
+        const j = Math.floor(
+            Math.random() * (i + 1)
+        );
+
+        [result[i], result[j]] =
+            [result[j], result[i]];
+
+    }
+
+    return result;
+
 }
 
-function setLoading(isLoading) {
-  appState.dom.loader.hidden = !isLoading;
-  if (isLoading) {
-    appState.dom.statusText.textContent = 'LADE WORTLISTE …';
-    appState.dom.statusText.classList.remove('is-warning');
-  }
+
+// ==========================================
+// GEDICHT GENERIEREN
+// ==========================================
+
+function generatePoem(code) {
+
+    let poem = code;
+
+    // Zufallswörter einsetzen
+
+    poem = poem.replace(
+        /<random-word>/gi,
+        () => getRandomWord() || "[KEIN WORT]"
+    );
+
+    poem = poem.replace(
+        /<random-noun>/gi,
+        () => getRandomNoun() || "[KEIN SUBSTANTIV]"
+    );
+
+    poem = poem.replace(
+        /<random-name>/gi,
+        () => getRandomName() || "[KEIN NAME]"
+    );
+
+    // Gleichheitsoperatoren
+
+    poem = poem.replace(
+        /<equality-operator:\s*"==">/gi,
+        "=="
+    );
+
+    poem = poem.replace(
+        /<equality-operator:\s*"!=">/gi,
+        "!="
+    );
+
+    // Zeilenumbrüche
+
+    poem = poem.replace(
+        /<line-break>/gi,
+        "\n"
+    );
+
+    // Shuffle der Wörter
+
+    if (/<shuffle-words>/i.test(poem)) {
+
+        poem = poem.replace(
+            /<shuffle-words>/gi,
+            ""
+        );
+
+        const words = poem.trim().split(/\s+/);
+
+        poem = shuffleArray(words).join(" ");
+
+    }
+
+    // Shuffle der Zeilen
+
+    if (/<shuffle-lines>/i.test(poem)) {
+
+        poem = poem.replace(
+            /<shuffle-lines>/gi,
+            ""
+        );
+
+        poem = shuffleArray(
+            poem.split("\n")
+        ).join("\n");
+
+    }
+
+    // Großschreibung
+
+    if (/<uppercase>/i.test(poem)) {
+
+        poem = poem.replace(
+            /<uppercase>/gi,
+            ""
+        );
+
+        poem = poem.toUpperCase();
+
+    }
+
+    // Kleinschreibung
+
+    if (/<lowercase>/i.test(poem)) {
+
+        poem = poem.replace(
+            /<lowercase>/gi,
+            ""
+        );
+
+        poem = poem.toLowerCase();
+
+    }
+
+    // Wiederholung der letzten Zeile
+
+    if (/<repeat>/i.test(poem)) {
+
+        poem = poem.replace(
+            /<repeat>/gi,
+            ""
+        );
+
+        const lines = poem.split("\n");
+
+        const lastLine = [...lines]
+            .reverse()
+            .find(line => line.trim() !== "");
+
+        if (lastLine) {
+            poem += "\n" + lastLine;
+        }
+
+    }
+
+    // Ende der Ausführung
+
+    const endPosition = poem.search(/<end>/i);
+
+    if (endPosition !== -1) {
+        poem = poem.substring(0, endPosition);
+    }
+
+    return poem.trim();
+
 }
 
-function updateStatus() {
-  const dom = appState.dom;
-  if (!appState.wordsLoaded) {
-    dom.statusText.textContent = 'LADE WORTLISTE …';
-    return;
-  }
-  const total = getAllWords().length;
-  if (appState.usingFallback) {
-   
+
+// ==========================================
+// GEDICHT AUSGEBEN
+// ==========================================
+
+function renderPoem() {
+
+    if (!codeInput || !output) return;
+
+    const code = codeInput.value;
+
+    if (!code.trim()) {
+
+        output.textContent = "";
+
+        const placeholder = document.createElement("span");
+
+        placeholder.className = "preview-placeholder";
+        placeholder.textContent = "VORSCHAU";
+
+        output.appendChild(placeholder);
+
+        return;
+
+    }
+
+    const poem = generatePoem(code);
+
+    // Text statt innerHTML verwenden:
+    // verhindert die Interpretation von HTML.
+
+    output.textContent = poem;
+
+}
+
+
+// ==========================================
+// LIVE-CODING
+// ==========================================
+
+if (codeInput) {
+
+    codeInput.addEventListener(
+        "input",
+        renderPoem
+    );
+
+}
+
+
+// ==========================================
+// EINGABE LEEREN
+// ==========================================
+
+if (clearBtn) {
+
+    clearBtn.addEventListener("click", () => {
+
+        if (codeInput) {
+            codeInput.value = "";
+        }
+
+        renderPoem();
+
+    });
+
+}
+
+
+// ==========================================
+// AUSGABE KOPIEREN
+// ==========================================
+
+if (copyBtn) {
+
+    copyBtn.addEventListener("click", async () => {
+
+        const poem = output?.textContent || "";
+
+        try {
+
+            await navigator.clipboard.writeText(poem);
+
+            copyBtn.textContent = "KOPIERT!";
+
+            setTimeout(() => {
+                copyBtn.textContent = "AUSGABE KOPIEREN";
+            }, 1500);
+
+        } catch (error) {
+
+            console.error("KOPIERFEHLER:", error);
+
+            copyBtn.textContent = "KOPIEREN FEHLGESCHLAGEN";
+
+        }
+
+    });
+
+}
+
+
+// ==========================================
+// EIGENE WÖRTER
+// ==========================================
+
+function renderCustomWords() {
+
+    if (!chipList) return;
+
+    chipList.innerHTML = "";
+
+    customWords.forEach(word => {
+
+        const li = document.createElement("li");
+
+        li.textContent = word;
+
+        chipList.appendChild(li);
+
+    });
+
+}
+
+
+if (wordForm) {
+
+    wordForm.addEventListener("submit", event => {
+
+        event.preventDefault();
+
+        const word = wordInput.value.trim();
+
+        if (!word) return;
+
+        if (customWords.includes(word)) {
+
+            if (wordFeedback) {
+                wordFeedback.textContent =
+                    "DIESES WORT EXISTIERT BEREITS.";
+            }
+
+            return;
+
+        }
+
+        customWords.push(word);
+
+        wordInput.value = "";
+
+        if (wordFeedback) {
+            wordFeedback.textContent =
+                "WORT HINZUGEFÜGT.";
+        }
+
+        renderCustomWords();
+        renderPoem();
+
+    });
+
+}
+
+
+// ==========================================
+// EIGENE WÖRTER ZURÜCKSETZEN
+// ==========================================
+
+if (resetWordsBtn) {
+
+    resetWordsBtn.addEventListener("click", () => {
+
+        customWords = [];
+
+        renderCustomWords();
+        renderPoem();
+
+        if (wordFeedback) {
+            wordFeedback.textContent =
+                "EIGENE WÖRTER ZURÜCKGESETZT.";
+        }
+
+    });
+
+}
+
+
+// ==========================================
+// START
+// ==========================================
+
+createCheatButtons();
+
+renderCustomWords();
+
+loadWordList();
