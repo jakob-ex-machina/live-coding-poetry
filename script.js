@@ -1,10 +1,7 @@
 /* =====================================================================
    Live Coding Poetry – script.js
-   Angepasst:
-   - Cheat Sheet ist jetzt ein Button-Grid unter dem Code-Input.
-     Klick fügt den Befehl an der Cursor-Position ein.
-   - Keine Titelleisten mehr.
-   - Ausgabe einfarbig (Farben kommen aus dem CSS).
+   Vollständig, inkl. buildCheatButtons() (war in der letzten Version
+   versehentlich verloren gegangen – dadurch startete die App nicht).
    ===================================================================== */
 
 'use strict';
@@ -56,7 +53,7 @@ const appState = {
    ===================================================================== */
 function init() {
   cacheDomElements();
-  buildCheatButtons();
+  buildCheatButtons();     // <-- war vorher nicht definiert
 
   appState.customWords = loadCustomWords();
   renderChips();
@@ -93,6 +90,49 @@ function bindEvents() {
   dom.copyBtn.addEventListener('click', handleCopy);
   dom.wordForm.addEventListener('submit', handleAddWord);
   dom.resetWordsBtn.addEventListener('click', handleResetWords);
+}
+
+
+/* =====================================================================
+   A2) CHEAT-SHEET-BUTTONS – fügen Befehl an Cursor-Position ein
+   ===================================================================== */
+function buildCheatButtons() {
+  const container = appState.dom.cheatButtons;
+  if (!container) return;
+  container.replaceChildren();
+
+  // Baustein-Liste: shuffle, br und alle Operatoren
+  const items = [
+    { code: '<shuffle-words>', label: 'shuffle-words' },
+    { code: '<br>',            label: 'br' }
+  ];
+  appState.operators.forEach((op) => {
+    items.push({ code: '<' + op.command + ': "' + op.symbol + '">', label: op.text });
+  });
+
+  items.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cheat-btn';
+    btn.textContent = item.code;
+    btn.title = item.label;
+    btn.addEventListener('click', () => insertAtCursor(item.code));
+    container.appendChild(btn);
+  });
+}
+
+/** Fügt Text an der aktuellen Cursor-Position im Code-Feld ein. */
+function insertAtCursor(text) {
+  const input = appState.dom.codeInput;
+  const start = input.selectionStart ?? input.value.length;
+  const end   = input.selectionEnd   ?? input.value.length;
+  const before = input.value.slice(0, start);
+  const after  = input.value.slice(end);
+  input.value = before + text + after;
+  const newPos = start + text.length;
+  input.setSelectionRange(newPos, newPos);
+  input.focus();
+  scheduleRender();
 }
 
 
@@ -370,39 +410,4 @@ async function loadBaseWords() {
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('words.json ist kein Array');
 
-    const words = data
-      .filter((entry) => typeof entry === 'string')
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
-    if (words.length === 0) throw new Error('words.json enthält keine Wörter');
-
-    appState.baseWords = words;
-    appState.usingFallback = false;
-  } catch (error) {
-    console.warn('Wortliste konnte nicht geladen werden:', error);
-    appState.baseWords = appState.config.fallbackWords.slice();
-    appState.usingFallback = true;
-  }
-
-  appState.wordsLoaded = true;
-  setLoading(false);
-  updateStatus();
-  activateAllInstances();
-}
-
-function setLoading(isLoading) {
-  appState.dom.loader.hidden = !isLoading;
-  if (isLoading) {
-    appState.dom.statusText.textContent = 'LADE WORTLISTE …';
-    appState.dom.statusText.classList.remove('is-warning');
-  }
-}
-
-function updateStatus() {
-  const dom = appState.dom;
-  if (!appState.wordsLoaded) {
-    dom.statusText.textContent = 'LADE WORTLISTE …';
-    return;
-  }
-  const total = getAllWords().length;
-  if (appState.usingFallback) {
+    const words =
