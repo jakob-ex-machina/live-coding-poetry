@@ -1,25 +1,30 @@
 /* =====================================================================
    Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
    Angepasst:
-   - Grauer Fenster-Look füllt die ganze Seite (kein türkiser Hintergrund).
-   - Alles in Großbuchstaben.
-   - Schriften wie in index.html (Sometype Mono / Noto Sans Kawi).
-   - Titelleisten (blaue Balken) entfernt.
+   - Seitenhintergrund dunkelgrau (plain, kein Muster).
+   - Überschrift zentriert, kein Schatten.
+   - Eingabe: weißer Text auf schwarz, ausnahmsweise lowercase.
+   - Ausgabe: einfarbig, Vorschau-Text in All-Caps, gleiche Schrift.
+   - Footer klein & zentriert.
    ===================================================================== */
 
 /* ---------- 1. Variablen ---------- */
 :root {
+  /* Hintergrund der gesamten Seite: dunkelgrau, plain */
+  --page-bg:     #1a1a1e;
+
+  /* "Fenster"-Farbe für die beiden Container (Bevel bleibt silbern) */
   --face:        #c8c8d2;
   --face-light:  #ffffff;
   --face-mid:    #e2e2ea;
   --face-shadow: #8a8a98;
   --face-dark:   #3a3a48;
 
-  /* Eingabe (Terminal-Grün) */
-  --code-bg:   #050a05;
-  --code-text: #6dff6d;
+  /* Eingabe: weiß auf schwarz */
+  --code-bg:    #000000;
+  --code-text:  #ffffff;
 
-  /* Ausgabe (dunkler Röhrenmonitor, einfarbig) */
+  /* Ausgabe: dunkler Röhrenmonitor, einfarbig */
   --crt-bg:    #0b1030;
   --crt-text:  #fdf3d0;
   --crt-dim:   #8f95ad;
@@ -49,19 +54,15 @@ body {
   margin: 0;
   font-family: var(--font-ui);
   color: #111;
-  background: var(--face);           /* graue Fläche füllt die ganze Seite */
+  background: var(--page-bg);   /* dunkelgrauer Plain-Hintergrund */
   min-height: 100vh;
-  text-transform: uppercase;         /* ALLES in Großbuchstaben */
+  text-transform: uppercase;    /* ALLES in Großbuchstaben */
 }
-
-/* Uppercase gilt nicht für den Code-Input selbst (soll tippbar bleiben),
-   wird aber in der Anzeige uppercase dargestellt. */
-.code-input { text-transform: none; }
 
 .page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
 }
 
 .visually-hidden {
@@ -72,10 +73,10 @@ body {
   white-space: nowrap;
 }
 
-/* ---------- 3. Kopfbereich: zentrierte Überschrift ---------- */
+/* ---------- 3. Kopfbereich: zentrierte Überschrift, plain ---------- */
 .site-header {
   text-align: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .site-title {
@@ -85,7 +86,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.1;
-  color: #111;
+  color: #ffffff;   /* weiß auf dunklem Hintergrund */
   text-shadow: none;
 }
 
@@ -149,14 +150,15 @@ body {
   padding: 0.8rem;
   resize: vertical;
   font: 1rem/1.55 var(--font-mono);
-  color: var(--code-text);
+  color: var(--code-text);       /* weiß */
   caret-color: var(--code-text);
-  background: var(--code-bg);
+  background: var(--code-bg);    /* schwarz */
   border: 1px solid #000;
-  box-shadow: var(--sunken), inset 0 0 30px rgba(80, 255, 80, 0.08);
+  box-shadow: var(--sunken), inset 0 0 30px rgba(255, 255, 255, 0.04);
+  text-transform: lowercase;     /* Ausnahme: Code-Feld in Kleinbuchstaben */
 }
 
-.code-input::placeholder { color: #3f7f3f; }
+.code-input::placeholder { color: #888888; }
 .code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
 
 /* Gruppenrahmen */
@@ -186,7 +188,7 @@ body {
 .cheat-btn {
   font: bold 0.75rem var(--font-mono);
   color: #111;
-  text-transform: none; /* Code-Snippet nicht uppercasen, sonst kaputt */
+  text-transform: none;   /* Code-Snippet nicht uppercasen */
   padding: 0.35em 0.6em;
   background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
   border: 1px solid #000;
@@ -213,7 +215,7 @@ body {
   background: #fff;
   border: 1px solid #000;
   box-shadow: var(--sunken);
-  text-transform: none; /* Eingabe nicht aufzwingen – Wortliste kann gemischt sein */
+  text-transform: none;
 }
 
 .feedback { margin: 0; min-height: 1.1em; font-size: 0.8rem; }
@@ -278,10 +280,12 @@ body {
   text-transform: uppercase;
 }
 
+/* Vorschau-Hinweis: All-Caps, gleiche Schrift wie Ausgabe, kein Kursiv */
 .output:empty::before {
-  content: "HIER ERSCHEINT DEIN GEDICHT …";
+  content: "VORSCHAU";
+  font-family: var(--font-serif);
   font-size: 1rem;
-  font-style: italic;
+  font-style: normal;
   color: #5d6690;
 }
 
@@ -295,6 +299,7 @@ body {
   margin: 0 0.25em;
   font: 0.8rem var(--font-mono);
   color: var(--error);
+  text-transform: none;
 }
 
 /* Zufallswort + hold-Button */
@@ -342,22 +347,26 @@ body {
   text-shadow: none;
 }
 
-/* ---------- 8. Footer ---------- */
+/* ---------- 8. Footer: klein & zentriert ---------- */
 .site-footer {
   margin-top: 1.5rem;
-  padding: 0.8rem;
+  padding: 0.5rem;
   text-align: center;
-  font-size: 0.75rem;
-  color: #111;
+  font-size: 0.7rem;   /* etwas kleiner */
+  color: #cccccc;      /* hellgrau, damit auf dunklem Grund lesbar */
 }
 
+.site-footer p { margin: 0; }
+
 .site-footer a {
-  color: #111;
+  color: #ffffff;
   font-weight: bold;
   text-decoration: underline;
 }
 
-.site-footer a:hover { color: #fff; }
+.site-footer a:hover { color: #ffc83c; }
+
+.site-footer .dot { margin: 0 0.5em; }
 
 /* ---------- 9. Statusleiste + Ladebalken ---------- */
 .statusbar {
