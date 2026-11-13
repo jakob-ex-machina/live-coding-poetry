@@ -1,55 +1,39 @@
-<!-- index.html -->
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Coding Poetry</title>
+
+  <title>LIVE CODING POETRY</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kawi:wght@400;700&family=Sometype+Mono:wght@400;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
 </head>
+
 <body>
   <div class="page">
-    <header class="site-header">
-      <div class="title-block">
-        <h1 class="site-title">Live Coding Poetry</h1>
-        <p class="site-subtitle">a live coding poetry instrument</p>
-      </div>
 
-      <details class="cheatsheet">
-        <summary class="btn">? Cheat Sheet</summary>
-        <div class="cheatsheet-panel window">
-          <div class="titlebar">
-            <span class="titlebar-text">Befehle</span>
-            <span class="titlebar-buttons" aria-hidden="true">
-              <span class="tb-btn">_</span>
-              <span class="tb-btn">□</span>
-              <span class="tb-btn">×</span>
-            </span>
-          </div>
-          <div class="window-body">
-            <table class="cheat-table">
-              <tbody id="cheat-body"></tbody>
-            </table>
-            <p class="cheat-note">Unbekannte Befehle erscheinen als roter Fehlertext.</p>
-          </div>
-        </div>
-      </details>
+    <header class="site-header">
+      <h1 class="site-title">LIVE CODING POETRY</h1>
     </header>
 
     <main class="layout">
-      <section class="window" aria-labelledby="editor-title">
-        <div class="titlebar">
-          <span class="titlebar-text" id="editor-title">Eingabe.code</span>
-          <span class="titlebar-buttons" aria-hidden="true">
-            <span class="tb-btn">_</span>
-            <span class="tb-btn">□</span>
-            <span class="tb-btn">×</span>
-          </span>
-        </div>
+
+      <!-- EINGABE -->
+      <section class="window" aria-label="Eingabe">
 
         <div class="window-body">
-          <label for="code-input" class="visually-hidden">Live-Coding-Eingabe</label>
+
+          <label for="code-input" class="visually-hidden">
+            LIVE CODING INPUT
+          </label>
+
           <textarea
             id="code-input"
             class="code-input"
@@ -57,66 +41,158 @@
             autocomplete="off"
             autocapitalize="off"
             autocorrect="off"
-            placeholder="&lt;shuffle-words&gt;&lt;equality-operator: &quot;==&quot;&gt;&lt;shuffle-words&gt;"
+            placeholder="<shuffle-words><equality-operator: &quot;==&quot;><shuffle-words>"
           ></textarea>
 
           <div class="toolbar">
-            <button type="button" id="clear-btn" class="btn">Eingabe leeren</button>
+            <button type="button" id="clear-btn" class="btn">
+              EINGABE LEEREN
+            </button>
           </div>
 
+          <!-- BAUSTEINE -->
+
           <fieldset class="groupbox">
-            <legend>Eigene Wörter</legend>
+
+            <legend>BAUSTEINE</legend>
+
+            <div id="cheat-buttons" class="cheat-buttons">
+
+              <!-- Wird zusätzlich durch JavaScript befüllt -->
+
+            </div>
+
+          </fieldset>
+
+          <!-- EIGENE WÖRTER -->
+
+          <fieldset class="groupbox">
+
+            <legend>EIGENE WÖRTER</legend>
 
             <form id="word-form" class="word-form" autocomplete="off">
+
               <input
                 type="text"
                 id="word-input"
                 class="text-input"
                 maxlength="60"
-                placeholder="neues Wort …"
+                placeholder="NEUES WORT ..."
                 aria-label="Neues Wort"
               >
-              <button type="submit" class="btn">Wort hinzufügen</button>
+
+              <button type="submit" class="btn">
+                WORT HINZUFÜGEN
+              </button>
+
             </form>
 
-            <p id="word-feedback" class="feedback" aria-live="polite"></p>
-            <ul id="chip-list" class="chip-list" aria-label="Bisher hinzugefügte Wörter"></ul>
-            <button type="button" id="reset-words-btn" class="btn btn-small">
-              eigene Wörter zurücksetzen
+            <p
+              id="word-feedback"
+              class="feedback"
+              aria-live="polite"
+            ></p>
+
+            <ul
+              id="chip-list"
+              class="chip-list"
+              aria-label="EIGENE WÖRTER"
+            ></ul>
+
+            <button
+              type="button"
+              id="reset-words-btn"
+              class="btn btn-small"
+            >
+              WÖRTER ZURÜCKSETZEN
             </button>
+
           </fieldset>
+
         </div>
       </section>
 
-      <section class="window" aria-labelledby="output-title">
-        <div class="titlebar">
-          <span class="titlebar-text" id="output-title">Gedicht.txt</span>
-          <span class="titlebar-buttons" aria-hidden="true">
-            <span class="tb-btn">_</span>
-            <span class="tb-btn">□</span>
-            <span class="tb-btn">×</span>
-          </span>
-        </div>
+      <!-- AUSGABE -->
+
+      <section class="window" aria-label="Gedicht">
 
         <div class="window-body">
-          <div id="output" class="output" aria-label="Gerenderte Ausgabe"></div>
+
+          <div
+            id="output"
+            class="output"
+            aria-label="GEDICHTVORSCHAU"
+          >
+            <span class="preview-placeholder">VORSCHAU</span>
+          </div>
 
           <div class="toolbar">
-            <button type="button" id="copy-btn" class="btn">Ausgabe kopieren</button>
+
+            <button type="button" id="copy-btn" class="btn">
+              AUSGABE KOPIEREN
+            </button>
+
           </div>
+
         </div>
       </section>
+
     </main>
 
-    <footer class="statusbar">
-      <div id="status-text" class="status-field" role="status">Lade Wortliste …</div>
+    <!-- FOOTER -->
+
+    <footer class="site-footer">
+
+      <p>
+        <a href="https://jakob-buurman.de/impressum">
+          IMPRESSUM
+        </a>
+
+        <span class="dot">·</span>
+
+        ERSTELLT UNTER VERWENDUNG VON CLAUDE
+
+        <span class="dot">·</span>
+
+        WORTDATENBANK:
+
+        <a href="https://github.com/gambolputty/german-nouns">
+          GERMAN-NOUNS
+        </a>
+
+        (CC-BY-SA 4.0)
+
+        <span class="dot">·</span>
+
+        <a href="https://github.com/PenTestical/german_names">
+          GERMAN_NAMES
+        </a>
+
+      </p>
+
+    </footer>
+
+    <!-- STATUS -->
+
+    <div class="statusbar">
+
+      <div
+        id="status-text"
+        class="status-field"
+        role="status"
+      >
+        LADE WORTLISTE ...
+      </div>
+
       <div
         id="loader"
         class="loader"
         role="progressbar"
-        aria-label="Wortliste wird geladen"
+        aria-label="WORTLISTE WIRD GELADEN"
       ></div>
-    </footer>
+
+    </div>
+
   </div>
 </body>
 </html>
