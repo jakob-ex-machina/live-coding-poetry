@@ -1,3 +1,111 @@
+/* =====================================================================
+   Live Coding Poetry – script.js
+   Reines Vanilla-JavaScript, keine Bibliotheken.
+   ===================================================================== */
+
+'use strict';
+
+const appState = {
+  config: {
+    shuffleIntervalMs: 10000,
+    debounceMs: 300,
+    wordsUrl: './words.json',
+    storageKey: 'liveCodingPoetry.customWords',
+    maxWordLength: 60,
+    fallbackWords: [
+      'Haus', 'Baum', 'Fluss', 'Sonne', 'Mond', 'Nebel', 'Stein', 'Wind',
+      'Anna', 'Berlin', 'Stille', 'Fenster', 'Meer', 'Schatten', 'Licht',
+      'Brücke', 'Herbst', 'Glas', 'Echo', 'Wolke'
+    ]
+  },
+
+  operators: [
+    { command: 'equality-operator',    symbol: '==', text: 'wie' },
+    { command: 'comparison-operator',  symbol: '>',  text: 'größer als' },
+    { command: 'comparison-operator',  symbol: '<',  text: 'kleiner als' },
+    { command: 'comparison-operator',  symbol: '>=', text: 'größer oder gleich' },
+    { command: 'comparison-operator',  symbol: '<=', text: 'kleiner oder gleich' },
+    { command: 'similarity-operator',  symbol: '~',  text: 'ähnlich wie' },
+    { command: 'analogy-operator',     symbol: '~~', text: 'so wie' },
+    { command: 'addition-operator',    symbol: '+',  text: 'und' },
+    { command: 'alternative-operator', symbol: '||', text: 'oder' },
+    { command: 'negation-operator',    symbol: '!=', text: 'anders als' },
+    { command: 'sequence-operator',    symbol: '>>', text: 'dann' }
+  ],
+
+  baseWords: [],
+  customWords: [],
+  wordsLoaded: false,
+  usingFallback: false,
+  lineRecords: [],
+  renderTimerId: null,
+  dom: {}
+};
+
+
+/* =====================================================================
+   A) START
+   ===================================================================== */
+
+function init() {
+  cacheDomElements();
+
+  const requiredElements = [
+    'codeInput', 'output', 'clearBtn', 'copyBtn', 'wordForm', 'wordInput',
+    'wordFeedback', 'chipList', 'resetWordsBtn', 'statusText', 'loader',
+    'cheatBody'
+  ];
+
+  const missingElements = requiredElements.filter((key) => !appState.dom[key]);
+
+  if (missingElements.length > 0) {
+    console.error(
+      'Live Coding Poetry: Diese HTML-Elemente fehlen oder haben falsche IDs:',
+      missingElements
+    );
+    return;
+  }
+
+  buildCheatSheet();
+
+  appState.customWords = loadCustomWords();
+  renderChips();
+  updateStatus();
+
+  bindEvents();
+  renderOutput(parseInput(appState.dom.codeInput.value));
+
+  loadBaseWords();
+}
+
+function cacheDomElements() {
+  const byId = (id) => document.getElementById(id);
+
+  appState.dom = {
+    codeInput: byId('code-input'),
+    output: byId('output'),
+    clearBtn: byId('clear-btn'),
+    copyBtn: byId('copy-btn'),
+    wordForm: byId('word-form'),
+    wordInput: byId('word-input'),
+    wordFeedback: byId('word-feedback'),
+    chipList: byId('chip-list'),
+    resetWordsBtn: byId('reset-words-btn'),
+    statusText: byId('status-text'),
+    loader: byId('loader'),
+    cheatBody: byId('cheat-body')
+  };
+}
+
+function bindEvents() {
+  const dom = appState.dom;
+
+  dom.codeInput.addEventListener('input', scheduleRender);
+  dom.clearBtn.addEventListener('click', handleClear);
+  dom.copyBtn.addEventListener('click', handleCopy);
+  dom.wordForm.addEventListener('submit', handleAddWord);
+  dom.resetWordsBtn.addEventListener('click', handleResetWords);
+}
 
 
 /* =====================================================================
@@ -669,4 +777,5 @@ function buildCheatSheet() {
 /* =====================================================================
    LOS GEHT'S
    ===================================================================== */
+
 init();
