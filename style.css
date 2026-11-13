@@ -1,62 +1,72 @@
 /* =====================================================================
    Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
-   Angepasst:
-   - Grauer Fenster-Look füllt die ganze Seite (kein türkiser Hintergrund).
-   - Alles in Großbuchstaben.
-   - Schriften wie in index.html (Sometype Mono / Noto Sans Kawi).
-   - Titelleisten (blaue Balken) entfernt.
    ===================================================================== */
 
-/* ---------- 1. Variablen ---------- */
-:root {
-  --face:        #c8c8d2;
-  --face-light:  #ffffff;
-  --face-mid:    #e2e2ea;
-  --face-shadow: #8a8a98;
-  --face-dark:   #3a3a48;
+/* ---------- 1. Farben, Schriften und Schatten ---------- */
 
-  /* Eingabe (Terminal-Grün) */
-  --code-bg:   #050a05;
+:root {
+  --face: #c8c8d2;
+  --face-light: #ffffff;
+  --face-mid: #e2e2ea;
+  --face-shadow: #8a8a98;
+  --face-dark: #3a3a48;
+
+  --desk: #2b7a8c;
+  --title-1: #0a246a;
+  --title-2: #3a8be0;
+
+  --code-bg: #050a05;
   --code-text: #6dff6d;
 
-  /* Ausgabe (dunkler Röhrenmonitor, einfarbig) */
-  --crt-bg:    #0b1030;
-  --crt-text:  #fdf3d0;
-  --crt-dim:   #8f95ad;
-  --error:     #ff5555;
+  --crt-bg: #0b1030;
+  --crt-text: #fdf3d0;
+  --crt-gold: #ffd95a;
+  --crt-cyan: #7fe6ff;
+  --crt-dim: #8f95ad;
+  --error: #ff5555;
 
   --raised:
     inset 1px 1px 0 var(--face-light),
     inset -1px -1px 0 var(--face-dark),
     inset 2px 2px 0 var(--face-mid),
     inset -2px -2px 0 var(--face-shadow);
+
   --sunken:
     inset 1px 1px 0 var(--face-dark),
     inset -1px -1px 0 var(--face-light),
     inset 2px 2px 0 var(--face-shadow),
     inset -2px -2px 0 var(--face-mid);
 
-  --font-ui:    'Sometype Mono', 'Courier New', monospace;
-  --font-mono:  'Courier New', Consolas, 'Lucida Console', monospace;
-  --font-serif: 'Noto Sans Kawi', Georgia, sans-serif;
+  --font-ui: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
+  --font-mono: "Courier New", Consolas, "Lucida Console", monospace;
+  --font-serif: Georgia, "Times New Roman", serif;
 }
 
+
 /* ---------- 2. Grundlagen ---------- */
-*, *::before, *::after { box-sizing: border-box; }
-[hidden] { display: none !important; }
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
 
 body {
   margin: 0;
   font-family: var(--font-ui);
   color: #111;
-  background: var(--face);           /* graue Fläche füllt die ganze Seite */
+  background-color: var(--desk);
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 6px 6px;
   min-height: 100vh;
-  text-transform: uppercase;         /* ALLES in Großbuchstaben */
 }
-
-/* Uppercase gilt nicht für den Code-Input selbst (soll tippbar bleiben),
-   wird aber in der Anzeige uppercase dargestellt. */
-.code-input { text-transform: none; }
 
 .page {
   max-width: 1400px;
@@ -66,35 +76,93 @@ body {
 
 .visually-hidden {
   position: absolute;
-  width: 1px; height: 1px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
 
-/* ---------- 3. Kopfbereich: zentrierte Überschrift ---------- */
+
+/* ---------- 3. Kopfbereich ---------- */
+
 .site-header {
-  text-align: center;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
   margin-bottom: 1.25rem;
 }
 
 .site-title {
   margin: 0;
-  font-family: var(--font-ui);
-  font-size: clamp(1.8rem, 4.5vw, 3rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: "Arial Black", Impact, "Trebuchet MS", sans-serif;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  letter-spacing: 0.02em;
   line-height: 1.1;
-  color: #111;
-  text-shadow: none;
+  color: #fff;
+  background: linear-gradient(
+    #ffffff 0%,
+    #dbe6f2 45%,
+    #7f90a8 50%,
+    #e8f0fa 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter:
+    drop-shadow(2px 2px 0 var(--title-1))
+    drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.5));
 }
 
-/* ---------- 4. Fenster mit Bevel-Rahmen (ohne Titelleiste) ---------- */
+.site-subtitle {
+  margin: 0.5rem 0 0 0.2rem;
+  font: italic 1.05rem var(--font-serif);
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+}
+
+
+/* ---------- 4. Fenster mit Titelleiste ---------- */
+
 .window {
   background: var(--face);
   border: 1px solid #000;
   padding: 3px;
   box-shadow: var(--raised), 5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 3px 4px 3px 8px;
+  background: linear-gradient(90deg, var(--title-1), var(--title-2));
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.titlebar-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.tb-btn {
+  display: inline-block;
+  width: 18px;
+  height: 16px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #000;
+  text-shadow: none;
+  background: var(--face);
+  border: 1px solid #000;
+  box-shadow: var(--raised);
 }
 
 .window-body {
@@ -104,7 +172,9 @@ body {
   padding: 0.75rem;
 }
 
-/* ---------- 5. Klobige Buttons ---------- */
+
+/* ---------- 5. Buttons ---------- */
+
 .btn {
   display: inline-block;
   font: bold 0.9rem var(--font-ui);
@@ -117,10 +187,11 @@ body {
   box-shadow: var(--raised), 2px 2px 0 rgba(0, 0, 0, 0.35);
   cursor: pointer;
   user-select: none;
-  text-transform: uppercase;
 }
 
-.btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
+.btn:hover {
+  background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb);
+}
 
 .btn:active {
   background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
@@ -130,22 +201,43 @@ body {
 
 .btn:focus-visible,
 .hold-btn:focus-visible,
-.chip-remove:focus-visible,
-.cheat-btn:focus-visible {
+.chip-remove:focus-visible {
   outline: 2px dotted #000;
   outline-offset: 2px;
 }
 
-.btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
 
-.btn-small { font-size: 0.75rem; padding: 0.4em 0.9em; align-self: flex-start; }
+.btn-small {
+  font-size: 0.75rem;
+  padding: 0.4em 0.9em;
+  align-self: flex-start;
+}
 
-.toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+summary.btn {
+  list-style: none;
+}
+
+summary.btn::-webkit-details-marker {
+  display: none;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 
 /* ---------- 6. Eingabe links ---------- */
+
 .code-input {
   width: 100%;
-  min-height: 320px;
+  min-height: 400px;
   padding: 0.8rem;
   resize: vertical;
   font: 1rem/1.55 var(--font-mono);
@@ -156,10 +248,15 @@ body {
   box-shadow: var(--sunken), inset 0 0 30px rgba(80, 255, 80, 0.08);
 }
 
-.code-input::placeholder { color: #3f7f3f; }
-.code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
+.code-input::placeholder {
+  color: #3f7f3f;
+}
 
-/* Gruppenrahmen */
+.code-input:focus {
+  outline: 2px solid var(--title-2);
+  outline-offset: 1px;
+}
+
 .groupbox {
   margin: 0;
   padding: 0.7rem 0.8rem 0.8rem;
@@ -172,38 +269,18 @@ body {
 .groupbox legend {
   padding: 0 0.4rem;
   font-weight: bold;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-shadow: 1px 1px 0 #fff;
 }
 
-/* ---------- 6b. Cheat-Sheet als Button-Grid ---------- */
-.cheat-buttons {
+
+/* ---------- 7. Eigene Wörter ---------- */
+
+.word-form {
   display: flex;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  gap: 0.4rem;
 }
-
-.cheat-btn {
-  font: bold 0.75rem var(--font-mono);
-  color: #111;
-  text-transform: none; /* Code-Snippet nicht uppercasen, sonst kaputt */
-  padding: 0.35em 0.6em;
-  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
-  border: 1px solid #000;
-  border-radius: 3px;
-  box-shadow: var(--raised);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
-.cheat-btn:active {
-  box-shadow: var(--sunken);
-  transform: translate(1px, 1px);
-}
-
-/* ---------- 6c. Eigene Wörter ---------- */
-.word-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
 .text-input {
   flex: 1 1 140px;
@@ -213,11 +290,18 @@ body {
   background: #fff;
   border: 1px solid #000;
   box-shadow: var(--sunken);
-  text-transform: none; /* Eingabe nicht aufzwingen – Wortliste kann gemischt sein */
 }
 
-.feedback { margin: 0; min-height: 1.1em; font-size: 0.8rem; }
-.feedback.is-error { color: #a01000; font-weight: bold; }
+.feedback {
+  margin: 0;
+  min-height: 1.1em;
+  font-size: 0.8rem;
+}
+
+.feedback.is-error {
+  color: #a01000;
+  font-weight: bold;
+}
 
 .chip-list {
   list-style: none;
@@ -229,7 +313,7 @@ body {
 }
 
 .chip-list:empty::before {
-  content: "NOCH KEINE EIGENEN WÖRTER";
+  content: "noch keine eigenen Wörter";
   font-size: 0.8rem;
   font-style: italic;
   color: #55556a;
@@ -248,7 +332,8 @@ body {
 }
 
 .chip-remove {
-  width: 1.4em; height: 1.4em;
+  width: 1.4em;
+  height: 1.4em;
   padding: 0;
   line-height: 1;
   font: bold 0.85rem var(--font-ui);
@@ -260,36 +345,52 @@ body {
   cursor: pointer;
 }
 
-.chip-remove:active { box-shadow: var(--sunken); }
+.chip-remove:active {
+  box-shadow: var(--sunken);
+}
 
-/* ---------- 7. Ausgabe rechts: einfarbig ---------- */
+
+/* ---------- 8. Ausgabe rechts ---------- */
+
 .output {
-  min-height: 420px;
+  min-height: 400px;
   padding: 1rem 1.3rem;
   overflow: auto;
   overflow-wrap: anywhere;
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   line-height: 1.9;
   color: var(--crt-text);
   background: var(--crt-bg);
   border: 1px solid #000;
   box-shadow: var(--sunken), inset 0 0 50px rgba(0, 0, 0, 0.65);
-  text-transform: uppercase;
 }
 
 .output:empty::before {
-  content: "HIER ERSCHEINT DEIN GEDICHT …";
+  content: "Hier erscheint dein Gedicht …";
   font-size: 1rem;
   font-style: italic;
   color: #5d6690;
 }
 
-.line { margin: 0; white-space: pre-wrap; }
-.line:empty { min-height: 1.9em; }
+.line {
+  margin: 0;
+  white-space: pre-wrap;
+}
 
-.text     { white-space: pre-wrap; }
-.operator { margin: 0 0.25em; font-style: italic; }
+.line:empty {
+  min-height: 1.9em;
+}
+
+.text {
+  white-space: pre-wrap;
+}
+
+.operator {
+  margin: 0 0.25em;
+  font-style: italic;
+  color: var(--crt-cyan);
+}
 
 .error {
   margin: 0 0.25em;
@@ -297,7 +398,9 @@ body {
   color: var(--error);
 }
 
-/* Zufallswort + hold-Button */
+
+/* ---------- 9. Shuffle-Wörter ---------- */
+
 .shuffle {
   display: inline-block;
   margin: 0 0.25em;
@@ -305,18 +408,31 @@ body {
 }
 
 .shuffle-word {
-  color: var(--crt-text);
+  color: var(--crt-gold);
+  text-shadow: 0 0 8px rgba(255, 217, 90, 0.35);
   transition: color 0.3s;
 }
 
-.shuffle-word.flash { animation: word-in 0.5s ease; }
-
-@keyframes word-in {
-  from { opacity: 0.15; transform: translateY(-4px); }
-  to   { opacity: 1;    transform: translateY(0); }
+.shuffle-word.flash {
+  animation: word-in 0.5s ease;
 }
 
-.shuffle.is-held .shuffle-word { color: var(--crt-dim); }
+@keyframes word-in {
+  from {
+    opacity: 0.15;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.shuffle.is-held .shuffle-word {
+  color: var(--crt-dim);
+  text-shadow: none;
+}
 
 .hold-btn {
   margin-left: 0.4em;
@@ -330,11 +446,16 @@ body {
   border-radius: 3px;
   box-shadow: var(--raised);
   cursor: pointer;
-  text-transform: uppercase;
 }
 
-.hold-btn:active { box-shadow: var(--sunken); }
-.hold-btn:disabled { opacity: 0.4; cursor: default; }
+.hold-btn:active {
+  box-shadow: var(--sunken);
+}
+
+.hold-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .hold-btn[aria-pressed="true"] {
   background: #ffc83c;
@@ -342,29 +463,61 @@ body {
   text-shadow: none;
 }
 
-/* ---------- 8. Footer ---------- */
-.site-footer {
-  margin-top: 1.5rem;
-  padding: 0.8rem;
-  text-align: center;
+
+/* ---------- 10. Cheat Sheet ---------- */
+
+.cheatsheet {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cheatsheet-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 10;
+  width: min(400px, 90vw);
+}
+
+.cheat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.cheat-table td {
+  padding: 0.25em 0.3em;
+  vertical-align: top;
+  border-bottom: 1px dotted var(--face-shadow);
+}
+
+.cheat-table td:last-child {
+  white-space: nowrap;
+}
+
+.cheat-table code {
+  display: inline-block;
+  padding: 0.05em 0.4em;
+  font: 0.78rem var(--font-mono);
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+}
+
+.cheat-note {
+  margin: 0;
   font-size: 0.75rem;
-  color: #111;
+  font-style: italic;
 }
 
-.site-footer a {
-  color: #111;
-  font-weight: bold;
-  text-decoration: underline;
-}
 
-.site-footer a:hover { color: #fff; }
+/* ---------- 11. Statusleiste und Ladebalken ---------- */
 
-/* ---------- 9. Statusleiste + Ladebalken ---------- */
 .statusbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   padding: 3px;
   background: var(--face);
   border: 1px solid #000;
@@ -378,21 +531,34 @@ body {
   box-shadow: var(--sunken);
 }
 
-.status-field.is-warning { color: #8a1c00; font-weight: bold; }
+.status-field.is-warning {
+  color: #8a1c00;
+  font-weight: bold;
+}
 
 .loader {
   width: 130px;
   height: 18px;
   border: 1px solid #000;
   box-shadow: var(--sunken);
-  background: repeating-linear-gradient(90deg, #3a3a48 0 10px, transparent 10px 14px);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--title-1) 0 10px,
+    transparent 10px 14px
+  );
   background-size: 14px 100%;
   animation: loader-move 0.6s linear infinite;
 }
 
-@keyframes loader-move { to { background-position: 14px 0; } }
+@keyframes loader-move {
+  to {
+    background-position: 14px 0;
+  }
+}
 
-/* ---------- 10. Layout ---------- */
+
+/* ---------- 12. Layout ---------- */
+
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -401,10 +567,18 @@ body {
 }
 
 @media (max-width: 799px) {
-  .layout { grid-template-columns: 1fr; }
-  .output { font-size: 1.3rem; }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .output {
+    font-size: 1.35rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shuffle-word.flash, .loader { animation: none; }
+  .shuffle-word.flash,
+  .loader {
+    animation: none;
+  }
 }
