@@ -1,419 +1,463 @@
-/* =====================================================================
-   Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
-   Angepasst:
-   - Seitenhintergrund dunkelgrau (plain, kein Muster).
-   - Überschrift zentriert, kein Schatten.
-   - Eingabe: weißer Text auf schwarz, ausnahmsweise lowercase.
-   - Ausgabe: einfarbig, Vorschau-Text in All-Caps, gleiche Schrift.
-   - Footer klein & zentriert.
-   ===================================================================== */
 
-/* ---------- 1. Variablen ---------- */
-:root {
-  /* Hintergrund der gesamten Seite: dunkelgrau, plain */
-  --page-bg:     #1a1a1e;
+/* =================================
+   GRUNDLAYOUT
+================================= */
 
-  /* "Fenster"-Farbe für die beiden Container (Bevel bleibt silbern) */
-  --face:        #c8c8d2;
-  --face-light:  #ffffff;
-  --face-mid:    #e2e2ea;
-  --face-shadow: #8a8a98;
-  --face-dark:   #3a3a48;
-
-  /* Eingabe: weiß auf schwarz */
-  --code-bg:    #000000;
-  --code-text:  #ffffff;
-
-  /* Ausgabe: dunkler Röhrenmonitor, einfarbig */
-  --crt-bg:    #0b1030;
-  --crt-text:  #fdf3d0;
-  --crt-dim:   #8f95ad;
-  --error:     #ff5555;
-
-  --raised:
-    inset 1px 1px 0 var(--face-light),
-    inset -1px -1px 0 var(--face-dark),
-    inset 2px 2px 0 var(--face-mid),
-    inset -2px -2px 0 var(--face-shadow);
-  --sunken:
-    inset 1px 1px 0 var(--face-dark),
-    inset -1px -1px 0 var(--face-light),
-    inset 2px 2px 0 var(--face-shadow),
-    inset -2px -2px 0 var(--face-mid);
-
-  --font-ui:    'Sometype Mono', 'Courier New', monospace;
-  --font-mono:  'Courier New', Consolas, 'Lucida Console', monospace;
-  --font-serif: 'Noto Sans Kawi', Georgia, sans-serif;
+* {
+  box-sizing: border-box;
 }
 
-/* ---------- 2. Grundlagen ---------- */
-*, *::before, *::after { box-sizing: border-box; }
-[hidden] { display: none !important; }
+:root {
+  --background: #202020;
+  --panel: #303030;
+  --input-background: #080808;
+  --border: #666666;
+  --text: #eeeeee;
+  --muted: #aaaaaa;
+  --button: #444444;
+  --button-hover: #606060;
 
+  --font: "Sometype Mono", monospace;
+}
+
+html,
 body {
   margin: 0;
-  font-family: var(--font-ui);
-  color: #111;
-  background: var(--page-bg);   /* dunkelgrauer Plain-Hintergrund */
+  min-height: 100%;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font);
+  text-transform: uppercase;
+}
+
+body {
   min-height: 100vh;
-  text-transform: uppercase;    /* ALLES in Großbuchstaben */
 }
 
 .page {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
+  width: 100%;
+  min-height: 100vh;
+  padding: 35px 4%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px; height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
+/* =================================
+   ÜBERSCHRIFT
+================================= */
 
-/* ---------- 3. Kopfbereich: zentrierte Überschrift, plain ---------- */
 .site-header {
+  width: 100%;
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 40px;
 }
 
 .site-title {
   margin: 0;
-  font-family: var(--font-ui);
-  font-size: clamp(1.8rem, 4.5vw, 3rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.1;
-  color: #ffffff;   /* weiß auf dunklem Hintergrund */
+  padding: 10px;
+  font-family: "Noto Sans Kawi", sans-serif;
+  font-size: clamp(25px, 4vw, 42px);
+  font-weight: 400;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+
+  color: var(--text);
+
   text-shadow: none;
+  box-shadow: none;
 }
 
-/* ---------- 4. Fenster mit Bevel-Rahmen (ohne Titelleiste) ---------- */
+/* =================================
+   HAUPTLAYOUT
+================================= */
+
+.layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+
+  width: 100%;
+  flex: 1;
+  align-items: stretch;
+}
+
+/* =================================
+   PORTALE / FENSTER
+================================= */
+
 .window {
-  background: var(--face);
-  border: 1px solid #000;
-  padding: 3px;
-  box-shadow: var(--raised), 5px 5px 0 rgba(0, 0, 0, 0.4);
+  width: 100%;
+  min-width: 0;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+
+  box-shadow: none;
 }
 
 .window-body {
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  padding: 0.75rem;
+  gap: 18px;
+  height: 100%;
 }
 
-/* ---------- 5. Klobige Buttons ---------- */
-.btn {
-  display: inline-block;
-  font: bold 0.9rem var(--font-ui);
-  color: #111;
-  text-shadow: 1px 1px 0 #fff;
-  padding: 0.55em 1.1em;
-  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
-  border: 1px solid #000;
-  border-radius: 4px;
-  box-shadow: var(--raised), 2px 2px 0 rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  user-select: none;
-  text-transform: uppercase;
-}
+/* =================================
+   CODE-EINGABE
+================================= */
 
-.btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
-
-.btn:active {
-  background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
-  box-shadow: var(--sunken);
-  transform: translate(2px, 2px);
-}
-
-.btn:focus-visible,
-.hold-btn:focus-visible,
-.chip-remove:focus-visible,
-.cheat-btn:focus-visible {
-  outline: 2px dotted #000;
-  outline-offset: 2px;
-}
-
-.btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-
-.btn-small { font-size: 0.75rem; padding: 0.4em 0.9em; align-self: flex-start; }
-
-.toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-
-/* ---------- 6. Eingabe links ---------- */
 .code-input {
+  display: block;
+
   width: 100%;
-  min-height: 320px;
-  padding: 0.8rem;
+  min-height: 350px;
   resize: vertical;
-  font: 1rem/1.55 var(--font-mono);
-  color: var(--code-text);       /* weiß */
-  caret-color: var(--code-text);
-  background: var(--code-bg);    /* schwarz */
-  border: 1px solid #000;
-  box-shadow: var(--sunken), inset 0 0 30px rgba(255, 255, 255, 0.04);
-  text-transform: lowercase;     /* Ausnahme: Code-Feld in Kleinbuchstaben */
+
+  padding: 18px;
+
+  background: var(--input-background);
+  color: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 2px;
+
+  font-family: "Sometype Mono", monospace;
+  font-size: 15px;
+  line-height: 1.7;
+
+  text-transform: none;
+
+  outline: none;
+  box-shadow: none;
 }
 
-.code-input::placeholder { color: #888888; }
-.code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
+.code-input:focus {
+  border-color: #aaaaaa;
+}
 
-/* Gruppenrahmen */
-.groupbox {
-  margin: 0;
-  padding: 0.7rem 0.8rem 0.8rem;
-  border: 2px groove #fff;
+.code-input::placeholder {
+  color: #777777;
+  opacity: 1;
+}
+
+/* =================================
+   TOOLBAR
+================================= */
+
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* =================================
+   BUTTONS
+================================= */
+
+.btn {
+  padding: 10px 15px;
+
+  background: var(--button);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+  border-radius: 2px;
+
+  font-family: var(--font);
+  font-size: 11px;
+
+  text-transform: uppercase;
+  cursor: pointer;
+
+  transition: background 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--button-hover);
+}
+
+.btn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+
+.btn-small {
+  font-size: 10px;
+  padding: 8px 11px;
+}
+
+/* =================================
+   BAUSTEINE / CHEAT SHEET
+================================= */
+
+.groupbox {
+  min-width: 0;
+  margin: 0;
+
+  padding: 16px;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
 }
 
 .groupbox legend {
-  padding: 0 0.4rem;
-  font-weight: bold;
-  font-size: 0.8rem;
-  text-shadow: 1px 1px 0 #fff;
+  padding: 0 8px;
+
+  color: var(--text);
+
+  font-family: var(--font);
+  font-size: 12px;
+
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-/* ---------- 6b. Cheat-Sheet als Button-Grid ---------- */
 .cheat-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 8px;
+  margin-top: 5px;
 }
 
-.cheat-btn {
-  font: bold 0.75rem var(--font-mono);
-  color: #111;
-  text-transform: none;   /* Code-Snippet nicht uppercasen */
-  padding: 0.35em 0.6em;
-  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
-  border: 1px solid #000;
-  border-radius: 3px;
-  box-shadow: var(--raised);
+.cheat-buttons button {
+  padding: 9px 12px;
+
+  background: #222222;
+  color: #ffffff;
+
+  border: 1px solid #777777;
+  border-radius: 2px;
+
+  font-family: "Sometype Mono", monospace;
+  font-size: 12px;
+
   cursor: pointer;
-  white-space: nowrap;
-}
-
-.cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
-.cheat-btn:active {
-  box-shadow: var(--sunken);
-  transform: translate(1px, 1px);
-}
-
-/* ---------- 6c. Eigene Wörter ---------- */
-.word-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-.text-input {
-  flex: 1 1 140px;
-  min-width: 0;
-  padding: 0.5em 0.6em;
-  font: 0.95rem var(--font-ui);
-  background: #fff;
-  border: 1px solid #000;
-  box-shadow: var(--sunken);
   text-transform: none;
 }
 
-.feedback { margin: 0; min-height: 1.1em; font-size: 0.8rem; }
-.feedback.is-error { color: #a01000; font-weight: bold; }
+.cheat-buttons button:hover {
+  background: #555555;
+}
 
-.chip-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* =================================
+   EIGENE WÖRTER
+================================= */
+
+.word-form {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 8px;
 }
 
-.chip-list:empty::before {
-  content: "NOCH KEINE EIGENEN WÖRTER";
-  font-size: 0.8rem;
-  font-style: italic;
-  color: #55556a;
-}
+.text-input {
+  flex: 1;
+  min-width: 120px;
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  padding: 0.15em 0.25em 0.15em 0.65em;
-  font-size: 0.85rem;
-  background: #fff6b8;
-  border: 1px solid #000;
-  border-radius: 3px;
-  box-shadow: var(--raised);
-}
+  padding: 10px;
 
-.chip-remove {
-  width: 1.4em; height: 1.4em;
-  padding: 0;
-  line-height: 1;
-  font: bold 0.85rem var(--font-ui);
-  color: #111;
-  background: var(--face);
-  border: 1px solid #000;
+  background: var(--input-background);
+  color: white;
+
+  border: 1px solid var(--border);
   border-radius: 2px;
-  box-shadow: var(--raised);
-  cursor: pointer;
+
+  font-family: var(--font);
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
-.chip-remove:active { box-shadow: var(--sunken); }
+.text-input::placeholder {
+  color: #888888;
+}
 
-/* ---------- 7. Ausgabe rechts: einfarbig ---------- */
+.feedback {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+.chip-list li {
+  padding: 6px 9px;
+
+  background: #222222;
+  color: white;
+
+  border: 1px solid var(--border);
+
+  font-size: 11px;
+}
+
+/* =================================
+   GEDICHTAUSGABE
+================================= */
+
 .output {
-  min-height: 420px;
-  padding: 1rem 1.3rem;
-  overflow: auto;
+  flex: 1;
+  min-height: 350px;
+
+  padding: 25px;
+
+  background: #252525;
+  border: 1px solid var(--border);
+
+  color: #eeeeee;
+
+  font-family: "Sometype Mono", monospace;
+  font-size: 16px;
+  line-height: 2;
+
+  text-transform: uppercase;
   overflow-wrap: anywhere;
-  font-family: var(--font-serif);
-  font-size: 1.5rem;
-  line-height: 1.9;
-  color: var(--crt-text);
-  background: var(--crt-bg);
-  border: 1px solid #000;
-  box-shadow: var(--sunken), inset 0 0 50px rgba(0, 0, 0, 0.65);
-  text-transform: uppercase;
+
+  box-shadow: none;
 }
 
-/* Vorschau-Hinweis: All-Caps, gleiche Schrift wie Ausgabe, kein Kursiv */
-.output:empty::before {
-  content: "VORSCHAU";
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-style: normal;
-  color: #5d6690;
+.preview-placeholder {
+  color: #888888;
+  font-family: "Sometype Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 2px;
 }
 
-.line { margin: 0; white-space: pre-wrap; }
-.line:empty { min-height: 1.9em; }
+/* =================================
+   FOOTER
+================================= */
 
-.text     { white-space: pre-wrap; }
-.operator { margin: 0 0.25em; font-style: italic; }
-
-.error {
-  margin: 0 0.25em;
-  font: 0.8rem var(--font-mono);
-  color: var(--error);
-  text-transform: none;
-}
-
-/* Zufallswort + hold-Button */
-.shuffle {
-  display: inline-block;
-  margin: 0 0.25em;
-  white-space: nowrap;
-}
-
-.shuffle-word {
-  color: var(--crt-text);
-  transition: color 0.3s;
-}
-
-.shuffle-word.flash { animation: word-in 0.5s ease; }
-
-@keyframes word-in {
-  from { opacity: 0.15; transform: translateY(-4px); }
-  to   { opacity: 1;    transform: translateY(0); }
-}
-
-.shuffle.is-held .shuffle-word { color: var(--crt-dim); }
-
-.hold-btn {
-  margin-left: 0.4em;
-  padding: 0.1em 0.6em;
-  vertical-align: middle;
-  font: bold 0.62rem var(--font-ui);
-  color: #111;
-  text-shadow: 1px 1px 0 #fff;
-  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
-  border: 1px solid #000;
-  border-radius: 3px;
-  box-shadow: var(--raised);
-  cursor: pointer;
-  text-transform: uppercase;
-}
-
-.hold-btn:active { box-shadow: var(--sunken); }
-.hold-btn:disabled { opacity: 0.4; cursor: default; }
-
-.hold-btn[aria-pressed="true"] {
-  background: #ffc83c;
-  box-shadow: var(--sunken);
-  text-shadow: none;
-}
-
-/* ---------- 8. Footer: klein & zentriert ---------- */
 .site-footer {
-  margin-top: 1.5rem;
-  padding: 0.5rem;
+  width: 100%;
+  margin-top: 35px;
+
   text-align: center;
-  font-size: 0.7rem;   /* etwas kleiner */
-  color: #cccccc;      /* hellgrau, damit auf dunklem Grund lesbar */
 }
 
-.site-footer p { margin: 0; }
+.site-footer p {
+  margin: 0 auto;
+  max-width: 1000px;
+
+  color: var(--muted);
+
+  font-family: var(--font);
+  font-size: 10px;
+  line-height: 2;
+
+  text-transform: uppercase;
+}
 
 .site-footer a {
-  color: #ffffff;
-  font-weight: bold;
+  color: var(--text);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.site-footer a:hover { color: #ffc83c; }
+.site-footer a:hover {
+  color: white;
+}
 
-.site-footer .dot { margin: 0 0.5em; }
+.dot {
+  padding: 0 5px;
+  color: #777777;
+}
 
-/* ---------- 9. Statusleiste + Ladebalken ---------- */
+/* =================================
+   STATUSLEISTE
+================================= */
+
 .statusbar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  padding: 3px;
-  background: var(--face);
-  border: 1px solid #000;
-  box-shadow: var(--raised), 4px 4px 0 rgba(0, 0, 0, 0.4);
+
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 12px;
+
+  border-top: 1px solid var(--border);
+
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .status-field {
-  flex: 1;
-  padding: 0.3em 0.7em;
-  font-size: 0.8rem;
-  box-shadow: var(--sunken);
+  text-transform: uppercase;
 }
-
-.status-field.is-warning { color: #8a1c00; font-weight: bold; }
 
 .loader {
-  width: 130px;
-  height: 18px;
-  border: 1px solid #000;
-  box-shadow: var(--sunken);
-  background: repeating-linear-gradient(90deg, #3a3a48 0 10px, transparent 10px 14px);
-  background-size: 14px 100%;
-  animation: loader-move 0.6s linear infinite;
+  width: 12px;
+  height: 12px;
+
+  border: 2px solid #777777;
+  border-top-color: white;
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
 }
 
-@keyframes loader-move { to { background-position: 14px 0; } }
-
-/* ---------- 10. Layout ---------- */
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-  align-items: start;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@media (max-width: 799px) {
-  .layout { grid-template-columns: 1fr; }
-  .output { font-size: 1.3rem; }
+/* =================================
+   ACCESSIBILITY
+================================= */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .shuffle-word.flash, .loader { animation: none; }
+/* =================================
+   RESPONSIVE DESIGN
+================================= */
+
+@media (max-width: 800px) {
+
+  .page {
+    padding: 20px 15px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .site-header {
+    margin-bottom: 25px;
+  }
+
+  .code-input {
+    min-height: 250px;
+  }
+
+  .output {
+    min-height: 250px;
+  }
+
+  .site-footer p {
+    font-size: 9px;
+  }
+
 }
