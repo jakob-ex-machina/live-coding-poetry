@@ -1,180 +1,191 @@
 /* =====================================================================
    Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
+   Angepasst:
+   - Seitenhintergrund dunkelgrau (plain, kein Muster).
+   - Überschrift zentriert, kein Schatten.
+   - Eingabe: weißer Text auf schwarz, ausnahmsweise lowercase.
+   - Ausgabe: einfarbig, Vorschau-Text in All-Caps, gleiche Schrift.
+   - Footer klein & zentriert.
    ===================================================================== */
 
-/* ---------- 1. Farben, Schriften und Schatten ---------- */
+/* ---------- 1. Variablen ---------- */
+
+/* =================================
+   GRUNDLAYOUT
+================================= */
+
+* {
+  box-sizing: border-box;
+}
 
 :root {
-  --face: #c8c8d2;
-  --face-light: #ffffff;
-  --face-mid: #e2e2ea;
+  /* Hintergrund der gesamten Seite: dunkelgrau, plain */
+  --page-bg:     #1a1a1e;
+
+  /* "Fenster"-Farbe für die beiden Container (Bevel bleibt silbern) */
+  --face:        #c8c8d2;
+  --face-light:  #ffffff;
+  --face-mid:    #e2e2ea;
   --face-shadow: #8a8a98;
-  --face-dark: #3a3a48;
+  --face-dark:   #3a3a48;
 
-  --desk: #2b7a8c;
-  --title-1: #0a246a;
-  --title-2: #3a8be0;
+  /* Eingabe: weiß auf schwarz */
+  --code-bg:    #000000;
+  --code-text:  #ffffff;
 
-  --code-bg: #050a05;
-  --code-text: #6dff6d;
-
-  --crt-bg: #0b1030;
-  --crt-text: #fdf3d0;
-  --crt-gold: #ffd95a;
-  --crt-cyan: #7fe6ff;
-  --crt-dim: #8f95ad;
-  --error: #ff5555;
+  /* Ausgabe: dunkler Röhrenmonitor, einfarbig */
+  --crt-bg:    #0b1030;
+  --crt-text:  #fdf3d0;
+  --crt-dim:   #8f95ad;
+  --error:     #ff5555;
 
   --raised:
     inset 1px 1px 0 var(--face-light),
     inset -1px -1px 0 var(--face-dark),
     inset 2px 2px 0 var(--face-mid),
     inset -2px -2px 0 var(--face-shadow);
-
   --sunken:
     inset 1px 1px 0 var(--face-dark),
     inset -1px -1px 0 var(--face-light),
     inset 2px 2px 0 var(--face-shadow),
     inset -2px -2px 0 var(--face-mid);
 
-  --font-ui: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
-  --font-mono: "Courier New", Consolas, "Lucida Console", monospace;
-  --font-serif: Georgia, "Times New Roman", serif;
+  --font-ui:    'Sometype Mono', 'Courier New', monospace;
+  --font-mono:  'Courier New', Consolas, 'Lucida Console', monospace;
+  --font-serif: 'Noto Sans Kawi', Georgia, sans-serif;
 }
-
 
 /* ---------- 2. Grundlagen ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+  --background: #202020;
+  --panel: #303030;
+  --input-background: #080808;
+  --border: #666666;
+  --text: #eeeeee;
+  --muted: #aaaaaa;
+  --button: #444444;
+  --button-hover: #606060;
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+  --font: "Sometype Mono", monospace;
 }
 
-[hidden] {
-  display: none !important;
+html,
+body {
+margin: 0;
+  font-family: var(--font-ui);
+  color: #111;
+  background: var(--page-bg);   /* dunkelgrauer Plain-Hintergrund */
+  min-height: 100%;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font);
+  text-transform: uppercase;
 }
 
 body {
-  margin: 0;
-  font-family: var(--font-ui);
-  color: #111;
-  background-color: var(--desk);
-  background-image: radial-gradient(
-    rgba(255, 255, 255, 0.2) 1px,
-    transparent 1px
-  );
-  background-size: 6px 6px;
-  min-height: 100vh;
+min-height: 100vh;
+  text-transform: uppercase;    /* ALLES in Großbuchstaben */
 }
 
 .page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
+  width: 100%;
+  min-height: 100vh;
+  padding: 35px 4%;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
 }
 
 .visually-hidden {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 1px; height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+/* =================================
+   ÜBERSCHRIFT
+================================= */
 
-
-/* ---------- 3. Kopfbereich ---------- */
-
+/* ---------- 3. Kopfbereich: zentrierte Überschrift, plain ---------- */
 .site-header {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  width: 100%;
+text-align: center;
+  margin-bottom: 1.5rem;
+  margin-bottom: 40px;
 }
 
 .site-title {
-  margin: 0;
-  font-family: "Arial Black", Impact, "Trebuchet MS", sans-serif;
-  font-size: clamp(2rem, 5vw, 3.4rem);
-  letter-spacing: 0.02em;
+margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(1.8rem, 4.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
   line-height: 1.1;
-  color: #fff;
-  background: linear-gradient(
-    #ffffff 0%,
-    #dbe6f2 45%,
-    #7f90a8 50%,
-    #e8f0fa 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter:
-    drop-shadow(2px 2px 0 var(--title-1))
-    drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.5));
+  color: #ffffff;   /* weiß auf dunklem Hintergrund */
+  padding: 10px;
+  font-family: "Noto Sans Kawi", sans-serif;
+  font-size: clamp(25px, 4vw, 42px);
+  font-weight: 400;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+
+  color: var(--text);
+
+text-shadow: none;
+  box-shadow: none;
 }
 
-.site-subtitle {
-  margin: 0.5rem 0 0 0.2rem;
-  font: italic 1.05rem var(--font-serif);
-  color: #fff;
-  text-shadow: 1px 1px 0 #000;
+/* ---------- 4. Fenster mit Bevel-Rahmen (ohne Titelleiste) ---------- */
+/* =================================
+   HAUPTLAYOUT
+================================= */
+
+.layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+
+  width: 100%;
+  flex: 1;
+  align-items: stretch;
 }
 
-
-/* ---------- 4. Fenster mit Titelleiste ---------- */
+/* =================================
+   PORTALE / FENSTER
+================================= */
 
 .window {
   background: var(--face);
   border: 1px solid #000;
   padding: 3px;
   box-shadow: var(--raised), 5px 5px 0 rgba(0, 0, 0, 0.4);
-}
+  width: 100%;
+  min-width: 0;
 
-.titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 3px 4px 3px 8px;
-  background: linear-gradient(90deg, var(--title-1), var(--title-2));
-  color: #fff;
-  font-weight: bold;
-  font-size: 0.9rem;
-  text-shadow: 1px 1px 0 #000;
-}
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
 
-.titlebar-buttons {
-  display: flex;
-  gap: 2px;
-}
-
-.tb-btn {
-  display: inline-block;
-  width: 18px;
-  height: 16px;
-  line-height: 14px;
-  text-align: center;
-  font-size: 0.7rem;
-  color: #000;
-  text-shadow: none;
-  background: var(--face);
-  border: 1px solid #000;
-  box-shadow: var(--raised);
+  box-shadow: none;
 }
 
 .window-body {
-  display: flex;
-  flex-direction: column;
+  padding: 20px;
+display: flex;
+flex-direction: column;
   gap: 0.9rem;
   padding: 0.75rem;
+  gap: 18px;
+  height: 100%;
 }
 
-
-/* ---------- 5. Buttons ---------- */
-
+/* ---------- 5. Klobige Buttons ---------- */
 .btn {
   display: inline-block;
   font: bold 0.9rem var(--font-ui);
@@ -187,100 +198,197 @@ body {
   box-shadow: var(--raised), 2px 2px 0 rgba(0, 0, 0, 0.35);
   cursor: pointer;
   user-select: none;
+  text-transform: uppercase;
+/* =================================
+   CODE-EINGABE
+================================= */
+
+.code-input {
+  display: block;
+
+  width: 100%;
+  min-height: 350px;
+  resize: vertical;
+
+  padding: 18px;
+
+  background: var(--input-background);
+  color: #ffffff;
+
+  border: 1px solid var(--border);
+  border-radius: 2px;
+
+  font-family: "Sometype Mono", monospace;
+  font-size: 15px;
+  line-height: 1.7;
+
+  text-transform: none;
+
+  outline: none;
+  box-shadow: none;
 }
 
-.btn:hover {
-  background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb);
+.btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
+.code-input:focus {
+  border-color: #aaaaaa;
 }
 
 .btn:active {
   background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
   box-shadow: var(--sunken);
   transform: translate(2px, 2px);
+.code-input::placeholder {
+  color: #777777;
+  opacity: 1;
 }
 
 .btn:focus-visible,
 .hold-btn:focus-visible,
-.chip-remove:focus-visible {
+.chip-remove:focus-visible,
+.cheat-btn:focus-visible {
   outline: 2px dotted #000;
   outline-offset: 2px;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  transform: none;
-}
-
-.btn-small {
-  font-size: 0.75rem;
-  padding: 0.4em 0.9em;
-  align-self: flex-start;
-}
-
-summary.btn {
-  list-style: none;
-}
-
-summary.btn::-webkit-details-marker {
-  display: none;
-}
+/* =================================
+   TOOLBAR
+================================= */
 
 .toolbar {
   display: flex;
-  gap: 0.6rem;
+  justify-content: flex-end;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
+.btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+/* =================================
+   BUTTONS
+================================= */
+
+.btn-small { font-size: 0.75rem; padding: 0.4em 0.9em; align-self: flex-start; }
+.btn {
+  padding: 10px 15px;
+
+.toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  background: var(--button);
+  color: var(--text);
 
 /* ---------- 6. Eingabe links ---------- */
-
 .code-input {
   width: 100%;
-  min-height: 400px;
+  min-height: 320px;
   padding: 0.8rem;
   resize: vertical;
   font: 1rem/1.55 var(--font-mono);
-  color: var(--code-text);
+  color: var(--code-text);       /* weiß */
   caret-color: var(--code-text);
-  background: var(--code-bg);
+  background: var(--code-bg);    /* schwarz */
   border: 1px solid #000;
-  box-shadow: var(--sunken), inset 0 0 30px rgba(80, 255, 80, 0.08);
+  box-shadow: var(--sunken), inset 0 0 30px rgba(255, 255, 255, 0.04);
+  text-transform: lowercase;     /* Ausnahme: Code-Feld in Kleinbuchstaben */
+  border: 1px solid var(--border);
+  border-radius: 2px;
+
+  font-family: var(--font);
+  font-size: 11px;
+
+  text-transform: uppercase;
+  cursor: pointer;
+
+  transition: background 0.15s ease;
 }
 
-.code-input::placeholder {
-  color: #3f7f3f;
+.btn:hover {
+  background: var(--button-hover);
 }
 
-.code-input:focus {
-  outline: 2px solid var(--title-2);
-  outline-offset: 1px;
+.code-input::placeholder { color: #888888; }
+.code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
+.btn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
 }
 
+.btn-small {
+  font-size: 10px;
+  padding: 8px 11px;
+}
+
+/* =================================
+   BAUSTEINE / CHEAT SHEET
+================================= */
+
+/* Gruppenrahmen */
 .groupbox {
-  margin: 0;
+  min-width: 0;
+margin: 0;
   padding: 0.7rem 0.8rem 0.8rem;
   border: 2px groove #fff;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+
+  padding: 16px;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
 }
 
 .groupbox legend {
   padding: 0 0.4rem;
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-shadow: 1px 1px 0 #fff;
+  padding: 0 8px;
+
+  color: var(--text);
+
+  font-family: var(--font);
+  font-size: 12px;
+
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-
-/* ---------- 7. Eigene Wörter ---------- */
-
-.word-form {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+/* ---------- 6b. Cheat-Sheet als Button-Grid ---------- */
+.cheat-buttons {
+display: flex;
+flex-wrap: wrap;
+  gap: 0.4rem;
+  gap: 8px;
+  margin-top: 5px;
 }
+
+.cheat-btn {
+  font: bold 0.75rem var(--font-mono);
+  color: #111;
+  text-transform: none;   /* Code-Snippet nicht uppercasen */
+  padding: 0.35em 0.6em;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--raised);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cheat-buttons button {
+  padding: 9px 12px;
+
+.cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
+.cheat-btn:active {
+  box-shadow: var(--sunken);
+  transform: translate(1px, 1px);
+}
+  background: #222222;
+  color: #ffffff;
+
+  border: 1px solid #777777;
+  border-radius: 2px;
+
+/* ---------- 6c. Eigene Wörter ---------- */
+.word-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  font-family: "Sometype Mono", monospace;
+  font-size: 12px;
 
 .text-input {
   flex: 1 1 140px;
@@ -290,34 +398,40 @@ summary.btn::-webkit-details-marker {
   background: #fff;
   border: 1px solid #000;
   box-shadow: var(--sunken);
+  cursor: pointer;
+text-transform: none;
 }
 
-.feedback {
-  margin: 0;
-  min-height: 1.1em;
-  font-size: 0.8rem;
-}
-
-.feedback.is-error {
-  color: #a01000;
-  font-weight: bold;
+.feedback { margin: 0; min-height: 1.1em; font-size: 0.8rem; }
+.feedback.is-error { color: #a01000; font-weight: bold; }
+.cheat-buttons button:hover {
+  background: #555555;
 }
 
 .chip-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
+/* =================================
+   EIGENE WÖRTER
+================================= */
+
+.word-form {
+display: flex;
+flex-wrap: wrap;
   gap: 0.4rem;
+  gap: 8px;
 }
 
 .chip-list:empty::before {
-  content: "noch keine eigenen Wörter";
+  content: "NOCH KEINE EIGENEN WÖRTER";
   font-size: 0.8rem;
   font-style: italic;
   color: #55556a;
 }
+.text-input {
+  flex: 1;
+  min-width: 120px;
 
 .chip {
   display: inline-flex;
@@ -330,10 +444,10 @@ summary.btn::-webkit-details-marker {
   border-radius: 3px;
   box-shadow: var(--raised);
 }
+  padding: 10px;
 
 .chip-remove {
-  width: 1.4em;
-  height: 1.4em;
+  width: 1.4em; height: 1.4em;
   padding: 0;
   line-height: 1;
   font: bold 0.85rem var(--font-ui);
@@ -344,95 +458,111 @@ summary.btn::-webkit-details-marker {
   box-shadow: var(--raised);
   cursor: pointer;
 }
+  background: var(--input-background);
+  color: white;
 
-.chip-remove:active {
-  box-shadow: var(--sunken);
-}
+.chip-remove:active { box-shadow: var(--sunken); }
+  border: 1px solid var(--border);
+  border-radius: 2px;
 
-
-/* ---------- 8. Ausgabe rechts ---------- */
-
+/* ---------- 7. Ausgabe rechts: einfarbig ---------- */
 .output {
-  min-height: 400px;
+  min-height: 420px;
   padding: 1rem 1.3rem;
   overflow: auto;
   overflow-wrap: anywhere;
   font-family: var(--font-serif);
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   line-height: 1.9;
   color: var(--crt-text);
   background: var(--crt-bg);
   border: 1px solid #000;
   box-shadow: var(--sunken), inset 0 0 50px rgba(0, 0, 0, 0.65);
+  font-family: var(--font);
+  font-size: 12px;
+text-transform: uppercase;
 }
 
+/* Vorschau-Hinweis: All-Caps, gleiche Schrift wie Ausgabe, kein Kursiv */
 .output:empty::before {
-  content: "Hier erscheint dein Gedicht …";
+  content: "VORSCHAU";
+  font-family: var(--font-serif);
   font-size: 1rem;
-  font-style: italic;
+  font-style: normal;
   color: #5d6690;
+.text-input::placeholder {
+  color: #888888;
 }
 
-.line {
-  margin: 0;
-  white-space: pre-wrap;
+.line { margin: 0; white-space: pre-wrap; }
+.line:empty { min-height: 1.9em; }
+.feedback {
+  color: var(--muted);
+  font-size: 11px;
 }
 
-.line:empty {
-  min-height: 1.9em;
-}
-
-.text {
-  white-space: pre-wrap;
-}
-
-.operator {
-  margin: 0 0.25em;
-  font-style: italic;
-  color: var(--crt-cyan);
-}
+.text     { white-space: pre-wrap; }
+.operator { margin: 0 0.25em; font-style: italic; }
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 
 .error {
   margin: 0 0.25em;
   font: 0.8rem var(--font-mono);
   color: var(--error);
+  text-transform: none;
 }
+  margin: 0;
+  padding: 0;
 
-
-/* ---------- 9. Shuffle-Wörter ---------- */
-
+/* Zufallswort + hold-Button */
 .shuffle {
   display: inline-block;
   margin: 0 0.25em;
   white-space: nowrap;
+  list-style: none;
 }
 
 .shuffle-word {
-  color: var(--crt-gold);
-  text-shadow: 0 0 8px rgba(255, 217, 90, 0.35);
+  color: var(--crt-text);
   transition: color 0.3s;
 }
+.chip-list li {
+  padding: 6px 9px;
 
-.shuffle-word.flash {
-  animation: word-in 0.5s ease;
-}
+.shuffle-word.flash { animation: word-in 0.5s ease; }
+  background: #222222;
+  color: white;
 
 @keyframes word-in {
-  from {
-    opacity: 0.15;
-    transform: translateY(-4px);
-  }
+  from { opacity: 0.15; transform: translateY(-4px); }
+  to   { opacity: 1;    transform: translateY(0); }
+  border: 1px solid var(--border);
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  font-size: 11px;
 }
 
-.shuffle.is-held .shuffle-word {
-  color: var(--crt-dim);
-  text-shadow: none;
-}
+.shuffle.is-held .shuffle-word { color: var(--crt-dim); }
+/* =================================
+   GEDICHTAUSGABE
+================================= */
+
+.output {
+  flex: 1;
+  min-height: 350px;
+
+  padding: 25px;
+
+  background: #252525;
+  border: 1px solid var(--border);
+
+  color: #eeeeee;
+
+  font-family: "Sometype Mono", monospace;
+  font-size: 16px;
+  line-height: 2;
 
 .hold-btn {
   margin-left: 0.4em;
@@ -446,82 +576,99 @@ summary.btn::-webkit-details-marker {
   border-radius: 3px;
   box-shadow: var(--raised);
   cursor: pointer;
+text-transform: uppercase;
 }
+  overflow-wrap: anywhere;
 
-.hold-btn:active {
-  box-shadow: var(--sunken);
-}
-
-.hold-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
+.hold-btn:active { box-shadow: var(--sunken); }
+.hold-btn:disabled { opacity: 0.4; cursor: default; }
+  box-shadow: none;
 }
 
 .hold-btn[aria-pressed="true"] {
   background: #ffc83c;
   box-shadow: var(--sunken);
   text-shadow: none;
+.preview-placeholder {
+  color: #888888;
+  font-family: "Sometype Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 2px;
 }
 
+/* ---------- 8. Footer: klein & zentriert ---------- */
+/* =================================
+   FOOTER
+================================= */
 
-/* ---------- 10. Cheat Sheet ---------- */
-
-.cheatsheet {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.cheatsheet-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  z-index: 10;
-  width: min(400px, 90vw);
-}
-
-.cheat-table {
+.site-footer {
+  margin-top: 1.5rem;
+  padding: 0.5rem;
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
+  margin-top: 35px;
+
+text-align: center;
+  font-size: 0.7rem;   /* etwas kleiner */
+  color: #cccccc;      /* hellgrau, damit auf dunklem Grund lesbar */
 }
 
-.cheat-table td {
-  padding: 0.25em 0.3em;
-  vertical-align: top;
-  border-bottom: 1px dotted var(--face-shadow);
+.site-footer p { margin: 0; }
+.site-footer p {
+  margin: 0 auto;
+  max-width: 1000px;
+
+  color: var(--muted);
+
+  font-family: var(--font);
+  font-size: 10px;
+  line-height: 2;
+
+  text-transform: uppercase;
 }
 
-.cheat-table td:last-child {
-  white-space: nowrap;
+.site-footer a {
+  color: #ffffff;
+  font-weight: bold;
+  color: var(--text);
+text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.cheat-table code {
-  display: inline-block;
-  padding: 0.05em 0.4em;
-  font: 0.78rem var(--font-mono);
-  background: #fff;
-  border: 1px solid #000;
-  box-shadow: var(--sunken);
+.site-footer a:hover { color: #ffc83c; }
+.site-footer a:hover {
+  color: white;
 }
 
-.cheat-note {
-  margin: 0;
-  font-size: 0.75rem;
-  font-style: italic;
+.site-footer .dot { margin: 0 0.5em; }
+.dot {
+  padding: 0 5px;
+  color: #777777;
 }
 
+/* =================================
+   STATUSLEISTE
+================================= */
 
-/* ---------- 11. Statusleiste und Ladebalken ---------- */
-
+/* ---------- 9. Statusleiste + Ladebalken ---------- */
 .statusbar {
-  display: flex;
-  align-items: center;
+display: flex;
+  justify-content: space-between;
+align-items: center;
   gap: 0.5rem;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   padding: 3px;
   background: var(--face);
   border: 1px solid #000;
   box-shadow: var(--raised), 4px 4px 0 rgba(0, 0, 0, 0.4);
+
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 12px;
+
+  border-top: 1px solid var(--border);
+
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .status-field {
@@ -529,56 +676,92 @@ summary.btn::-webkit-details-marker {
   padding: 0.3em 0.7em;
   font-size: 0.8rem;
   box-shadow: var(--sunken);
+  text-transform: uppercase;
 }
 
-.status-field.is-warning {
-  color: #8a1c00;
-  font-weight: bold;
-}
+.status-field.is-warning { color: #8a1c00; font-weight: bold; }
 
 .loader {
   width: 130px;
   height: 18px;
   border: 1px solid #000;
   box-shadow: var(--sunken);
-  background: repeating-linear-gradient(
-    90deg,
-    var(--title-1) 0 10px,
-    transparent 10px 14px
-  );
+  background: repeating-linear-gradient(90deg, #3a3a48 0 10px, transparent 10px 14px);
   background-size: 14px 100%;
   animation: loader-move 0.6s linear infinite;
 }
+  width: 12px;
+  height: 12px;
 
-@keyframes loader-move {
-  to {
-    background-position: 14px 0;
-  }
-}
+@keyframes loader-move { to { background-position: 14px 0; } }
+  border: 2px solid #777777;
+  border-top-color: white;
+  border-radius: 50%;
 
-
-/* ---------- 12. Layout ---------- */
-
+/* ---------- 10. Layout ---------- */
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   align-items: start;
+  animation: spin 0.8s linear infinite;
 }
 
 @media (max-width: 799px) {
+  .layout { grid-template-columns: 1fr; }
+  .output { font-size: 1.3rem; }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =================================
+   ACCESSIBILITY
+================================= */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-word.flash, .loader { animation: none; }
+/* =================================
+   RESPONSIVE DESIGN
+================================= */
+
+@media (max-width: 800px) {
+
+  .page {
+    padding: 20px 15px;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 
-  .output {
-    font-size: 1.35rem;
+  .site-header {
+    margin-bottom: 25px;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .shuffle-word.flash,
-  .loader {
-    animation: none;
+  .code-input {
+    min-height: 250px;
   }
+
+  .output {
+    min-height: 250px;
+  }
+
+  .site-footer p {
+    font-size: 9px;
+  }
+
 }
