@@ -1,592 +1,410 @@
+/* =====================================================================
+   Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
+   Angepasst:
+   - Grauer Fenster-Look füllt die ganze Seite (kein türkiser Hintergrund).
+   - Alles in Großbuchstaben.
+   - Schriften wie in index.html (Sometype Mono / Noto Sans Kawi).
+   - Titelleisten (blaue Balken) entfernt.
+   ===================================================================== */
 
-"use strict";
+/* ---------- 1. Variablen ---------- */
+:root {
+  --face:        #c8c8d2;
+  --face-light:  #ffffff;
+  --face-mid:    #e2e2ea;
+  --face-shadow: #8a8a98;
+  --face-dark:   #3a3a48;
 
-// ==========================================
-// ELEMENTE
-// ==========================================
+  /* Eingabe (Terminal-Grün) */
+  --code-bg:   #050a05;
+  --code-text: #6dff6d;
 
-const codeInput = document.getElementById("code-input");
-const cheatButtons = document.getElementById("cheat-buttons");
+  /* Ausgabe (dunkler Röhrenmonitor, einfarbig) */
+  --crt-bg:    #0b1030;
+  --crt-text:  #fdf3d0;
+  --crt-dim:   #8f95ad;
+  --error:     #ff5555;
 
-const output = document.getElementById("output");
-const statusText = document.getElementById("status-text");
-const loader = document.getElementById("loader");
+  --raised:
+    inset 1px 1px 0 var(--face-light),
+    inset -1px -1px 0 var(--face-dark),
+    inset 2px 2px 0 var(--face-mid),
+    inset -2px -2px 0 var(--face-shadow);
+  --sunken:
+    inset 1px 1px 0 var(--face-dark),
+    inset -1px -1px 0 var(--face-light),
+    inset 2px 2px 0 var(--face-shadow),
+    inset -2px -2px 0 var(--face-mid);
 
-const clearBtn = document.getElementById("clear-btn");
-const copyBtn = document.getElementById("copy-btn");
-
-const wordForm = document.getElementById("word-form");
-const wordInput = document.getElementById("word-input");
-const wordFeedback = document.getElementById("word-feedback");
-
-const chipList = document.getElementById("chip-list");
-const resetWordsBtn = document.getElementById("reset-words-btn");
-
-
-// ==========================================
-// DATEN
-// ==========================================
-
-let wordDatabase = [];
-let customWords = [];
-
-const buildingBlocks = [
-    "<shuffle-words>",
-    '<equality-operator: "==">',
-    '<equality-operator: "!=">',
-    "<random-word>",
-    "<random-noun>",
-    "<random-name>",
-    "<line-break>",
-    "<shuffle-lines>",
-    "<uppercase>",
-    "<lowercase>",
-    "<repeat>",
-    "<end>"
-];
-
-
-// ==========================================
-// WORTLISTE LADEN
-// ==========================================
-
-async function loadWordList() {
-
-    try {
-
-        if (statusText) {
-            statusText.textContent = "LADE WORTLISTE ...";
-        }
-
-        if (loader) {
-            loader.style.display = "block";
-        }
-
-        // words.json liegt im selben Ordner
-        // wie die HTML-Datei.
-
-        const response = await fetch(
-            new URL("./words.json", document.baseURI),
-            { cache: "no-cache" }
-        );
-
-        if (!response.ok) {
-            throw new Error(
-                `HTTP ${response.status}: ${response.statusText}`
-            );
-        }
-
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-            throw new Error(
-                "words.json enthält kein gültiges JSON-Array."
-            );
-        }
-
-        wordDatabase = [
-            ...new Set(
-                data
-                    .filter(word => typeof word === "string")
-                    .map(word => word.trim())
-                    .filter(Boolean)
-            )
-        ];
-
-        if (wordDatabase.length === 0) {
-            throw new Error("Die Wortliste enthält keine Wörter.");
-        }
-
-        if (statusText) {
-            statusText.textContent =
-                `WORTLISTE GELADEN: ${wordDatabase.length} WÖRTER`;
-        }
-
-        renderPoem();
-
-    } catch (error) {
-
-        console.error("WORTLISTEN-FEHLER:", error);
-
-        if (statusText) {
-            statusText.textContent =
-                "FEHLER: WORTLISTE NICHT GELADEN";
-        }
-
-    } finally {
-
-        if (loader) {
-            loader.style.display = "none";
-        }
-
-    }
-
+  --font-ui:    'Sometype Mono', 'Courier New', monospace;
+  --font-mono:  'Courier New', Consolas, 'Lucida Console', monospace;
+  --font-serif: 'Noto Sans Kawi', Georgia, sans-serif;
 }
 
+/* ---------- 2. Grundlagen ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
-// ==========================================
-// ZUFALLSFUNKTIONEN
-// ==========================================
-
-function randomItem(array) {
-
-    if (!array || array.length === 0) {
-        return "";
-    }
-
-    const index = Math.floor(
-        Math.random() * array.length
-    );
-
-    return array[index];
-
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  color: #111;
+  background: var(--face);           /* graue Fläche füllt die ganze Seite */
+  min-height: 100vh;
+  text-transform: uppercase;         /* ALLES in Großbuchstaben */
 }
 
+/* Uppercase gilt nicht für den Code-Input selbst (soll tippbar bleiben),
+   wird aber in der Anzeige uppercase dargestellt. */
+.code-input { text-transform: none; }
 
-function getRandomWord() {
-
-    return randomItem([
-        ...wordDatabase,
-        ...customWords
-    ]);
-
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
 }
 
-
-function getRandomNoun() {
-
-    // Die German-Nouns-Datenbank enthält
-    // deutsche Substantive.
-
-    return randomItem([
-        ...wordDatabase,
-        ...customWords
-    ]);
-
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
-
-function getRandomName() {
-
-    // Ohne separate Namensdatenbank
-    // ist keine echte Namensauswahl möglich.
-
-    return randomItem(customWords);
-
+/* ---------- 3. Kopfbereich: zentrierte Überschrift ---------- */
+.site-header {
+  text-align: center;
+  margin-bottom: 1.25rem;
 }
 
-
-// ==========================================
-// BAUSTEINE ERZEUGEN
-// ==========================================
-
-function createCheatButtons() {
-
-    if (!cheatButtons) return;
-
-    cheatButtons.innerHTML = "";
-
-    buildingBlocks.forEach(block => {
-
-        const button = document.createElement("button");
-
-        button.type = "button";
-        button.textContent = block;
-
-        button.addEventListener("click", () => {
-            insertAtCursor(block);
-        });
-
-        cheatButtons.appendChild(button);
-
-    });
-
+.site-title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(1.8rem, 4.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  color: #111;
+  text-shadow: none;
 }
 
-
-// ==========================================
-// BAUSTEINE EINFÜGEN
-// ==========================================
-
-function insertAtCursor(text) {
-
-    if (!codeInput) return;
-
-    const start = codeInput.selectionStart;
-    const end = codeInput.selectionEnd;
-
-    const currentText = codeInput.value;
-
-    codeInput.value =
-        currentText.substring(0, start) +
-        text +
-        currentText.substring(end);
-
-    const newPosition = start + text.length;
-
-    codeInput.focus();
-
-    codeInput.setSelectionRange(
-        newPosition,
-        newPosition
-    );
-
-    codeInput.dispatchEvent(
-        new Event("input", { bubbles: true })
-    );
-
+/* ---------- 4. Fenster mit Bevel-Rahmen (ohne Titelleiste) ---------- */
+.window {
+  background: var(--face);
+  border: 1px solid #000;
+  padding: 3px;
+  box-shadow: var(--raised), 5px 5px 0 rgba(0, 0, 0, 0.4);
 }
 
-
-// ==========================================
-// SHUFFLE
-// ==========================================
-
-function shuffleArray(array) {
-
-    const result = [...array];
-
-    for (let i = result.length - 1; i > 0; i--) {
-
-        const j = Math.floor(
-            Math.random() * (i + 1)
-        );
-
-        [result[i], result[j]] =
-            [result[j], result[i]];
-
-    }
-
-    return result;
-
+.window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.75rem;
 }
 
-
-// ==========================================
-// GEDICHT GENERIEREN
-// ==========================================
-
-function generatePoem(code) {
-
-    let poem = code;
-
-    // Zufallswörter einsetzen
-
-    poem = poem.replace(
-        /<random-word>/gi,
-        () => getRandomWord() || "[KEIN WORT]"
-    );
-
-    poem = poem.replace(
-        /<random-noun>/gi,
-        () => getRandomNoun() || "[KEIN SUBSTANTIV]"
-    );
-
-    poem = poem.replace(
-        /<random-name>/gi,
-        () => getRandomName() || "[KEIN NAME]"
-    );
-
-    // Gleichheitsoperatoren
-
-    poem = poem.replace(
-        /<equality-operator:\s*"==">/gi,
-        "=="
-    );
-
-    poem = poem.replace(
-        /<equality-operator:\s*"!=">/gi,
-        "!="
-    );
-
-    // Zeilenumbrüche
-
-    poem = poem.replace(
-        /<line-break>/gi,
-        "\n"
-    );
-
-    // Shuffle der Wörter
-
-    if (/<shuffle-words>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<shuffle-words>/gi,
-            ""
-        );
-
-        const words = poem.trim().split(/\s+/);
-
-        poem = shuffleArray(words).join(" ");
-
-    }
-
-    // Shuffle der Zeilen
-
-    if (/<shuffle-lines>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<shuffle-lines>/gi,
-            ""
-        );
-
-        poem = shuffleArray(
-            poem.split("\n")
-        ).join("\n");
-
-    }
-
-    // Großschreibung
-
-    if (/<uppercase>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<uppercase>/gi,
-            ""
-        );
-
-        poem = poem.toUpperCase();
-
-    }
-
-    // Kleinschreibung
-
-    if (/<lowercase>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<lowercase>/gi,
-            ""
-        );
-
-        poem = poem.toLowerCase();
-
-    }
-
-    // Wiederholung der letzten Zeile
-
-    if (/<repeat>/i.test(poem)) {
-
-        poem = poem.replace(
-            /<repeat>/gi,
-            ""
-        );
-
-        const lines = poem.split("\n");
-
-        const lastLine = [...lines]
-            .reverse()
-            .find(line => line.trim() !== "");
-
-        if (lastLine) {
-            poem += "\n" + lastLine;
-        }
-
-    }
-
-    // Ende der Ausführung
-
-    const endPosition = poem.search(/<end>/i);
-
-    if (endPosition !== -1) {
-        poem = poem.substring(0, endPosition);
-    }
-
-    return poem.trim();
-
+/* ---------- 5. Klobige Buttons ---------- */
+.btn {
+  display: inline-block;
+  font: bold 0.9rem var(--font-ui);
+  color: #111;
+  text-shadow: 1px 1px 0 #fff;
+  padding: 0.55em 1.1em;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 4px;
+  box-shadow: var(--raised), 2px 2px 0 rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  user-select: none;
+  text-transform: uppercase;
 }
 
+.btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
 
-// ==========================================
-// GEDICHT AUSGEBEN
-// ==========================================
-
-function renderPoem() {
-
-    if (!codeInput || !output) return;
-
-    const code = codeInput.value;
-
-    if (!code.trim()) {
-
-        output.textContent = "";
-
-        const placeholder = document.createElement("span");
-
-        placeholder.className = "preview-placeholder";
-        placeholder.textContent = "VORSCHAU";
-
-        output.appendChild(placeholder);
-
-        return;
-
-    }
-
-    const poem = generatePoem(code);
-
-    // Text statt innerHTML verwenden:
-    // verhindert die Interpretation von HTML.
-
-    output.textContent = poem;
-
+.btn:active {
+  background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
+  box-shadow: var(--sunken);
+  transform: translate(2px, 2px);
 }
 
-
-// ==========================================
-// LIVE-CODING
-// ==========================================
-
-if (codeInput) {
-
-    codeInput.addEventListener(
-        "input",
-        renderPoem
-    );
-
+.btn:focus-visible,
+.hold-btn:focus-visible,
+.chip-remove:focus-visible,
+.cheat-btn:focus-visible {
+  outline: 2px dotted #000;
+  outline-offset: 2px;
 }
 
+.btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-// ==========================================
-// EINGABE LEEREN
-// ==========================================
+.btn-small { font-size: 0.75rem; padding: 0.4em 0.9em; align-self: flex-start; }
 
-if (clearBtn) {
+.toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
-    clearBtn.addEventListener("click", () => {
-
-        if (codeInput) {
-            codeInput.value = "";
-        }
-
-        renderPoem();
-
-    });
-
+/* ---------- 6. Eingabe links ---------- */
+.code-input {
+  width: 100%;
+  min-height: 320px;
+  padding: 0.8rem;
+  resize: vertical;
+  font: 1rem/1.55 var(--font-mono);
+  color: var(--code-text);
+  caret-color: var(--code-text);
+  background: var(--code-bg);
+  border: 1px solid #000;
+  box-shadow: var(--sunken), inset 0 0 30px rgba(80, 255, 80, 0.08);
 }
 
+.code-input::placeholder { color: #3f7f3f; }
+.code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
 
-// ==========================================
-// AUSGABE KOPIEREN
-// ==========================================
-
-if (copyBtn) {
-
-    copyBtn.addEventListener("click", async () => {
-
-        const poem = output?.textContent || "";
-
-        try {
-
-            await navigator.clipboard.writeText(poem);
-
-            copyBtn.textContent = "KOPIERT!";
-
-            setTimeout(() => {
-                copyBtn.textContent = "AUSGABE KOPIEREN";
-            }, 1500);
-
-        } catch (error) {
-
-            console.error("KOPIERFEHLER:", error);
-
-            copyBtn.textContent = "KOPIEREN FEHLGESCHLAGEN";
-
-        }
-
-    });
-
+/* Gruppenrahmen */
+.groupbox {
+  margin: 0;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border: 2px groove #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
-
-// ==========================================
-// EIGENE WÖRTER
-// ==========================================
-
-function renderCustomWords() {
-
-    if (!chipList) return;
-
-    chipList.innerHTML = "";
-
-    customWords.forEach(word => {
-
-        const li = document.createElement("li");
-
-        li.textContent = word;
-
-        chipList.appendChild(li);
-
-    });
-
+.groupbox legend {
+  padding: 0 0.4rem;
+  font-weight: bold;
+  font-size: 0.8rem;
+  text-shadow: 1px 1px 0 #fff;
 }
 
-
-if (wordForm) {
-
-    wordForm.addEventListener("submit", event => {
-
-        event.preventDefault();
-
-        const word = wordInput.value.trim();
-
-        if (!word) return;
-
-        if (customWords.includes(word)) {
-
-            if (wordFeedback) {
-                wordFeedback.textContent =
-                    "DIESES WORT EXISTIERT BEREITS.";
-            }
-
-            return;
-
-        }
-
-        customWords.push(word);
-
-        wordInput.value = "";
-
-        if (wordFeedback) {
-            wordFeedback.textContent =
-                "WORT HINZUGEFÜGT.";
-        }
-
-        renderCustomWords();
-        renderPoem();
-
-    });
-
+/* ---------- 6b. Cheat-Sheet als Button-Grid ---------- */
+.cheat-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
-
-// ==========================================
-// EIGENE WÖRTER ZURÜCKSETZEN
-// ==========================================
-
-if (resetWordsBtn) {
-
-    resetWordsBtn.addEventListener("click", () => {
-
-        customWords = [];
-
-        renderCustomWords();
-        renderPoem();
-
-        if (wordFeedback) {
-            wordFeedback.textContent =
-                "EIGENE WÖRTER ZURÜCKGESETZT.";
-        }
-
-    });
-
+.cheat-btn {
+  font: bold 0.75rem var(--font-mono);
+  color: #111;
+  text-transform: none; /* Code-Snippet nicht uppercasen, sonst kaputt */
+  padding: 0.35em 0.6em;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--raised);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
+.cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
+.cheat-btn:active {
+  box-shadow: var(--sunken);
+  transform: translate(1px, 1px);
+}
 
-// ==========================================
-// START
-// ==========================================
+/* ---------- 6c. Eigene Wörter ---------- */
+.word-form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-createCheatButtons();
+.text-input {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 0.5em 0.6em;
+  font: 0.95rem var(--font-ui);
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+  text-transform: none; /* Eingabe nicht aufzwingen – Wortliste kann gemischt sein */
+}
 
-renderCustomWords();
+.feedback { margin: 0; min-height: 1.1em; font-size: 0.8rem; }
+.feedback.is-error { color: #a01000; font-weight: bold; }
 
-loadWordList();
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip-list:empty::before {
+  content: "NOCH KEINE EIGENEN WÖRTER";
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #55556a;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em 0.25em 0.15em 0.65em;
+  font-size: 0.85rem;
+  background: #fff6b8;
+  border: 1px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--raised);
+}
+
+.chip-remove {
+  width: 1.4em; height: 1.4em;
+  padding: 0;
+  line-height: 1;
+  font: bold 0.85rem var(--font-ui);
+  color: #111;
+  background: var(--face);
+  border: 1px solid #000;
+  border-radius: 2px;
+  box-shadow: var(--raised);
+  cursor: pointer;
+}
+
+.chip-remove:active { box-shadow: var(--sunken); }
+
+/* ---------- 7. Ausgabe rechts: einfarbig ---------- */
+.output {
+  min-height: 420px;
+  padding: 1rem 1.3rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  line-height: 1.9;
+  color: var(--crt-text);
+  background: var(--crt-bg);
+  border: 1px solid #000;
+  box-shadow: var(--sunken), inset 0 0 50px rgba(0, 0, 0, 0.65);
+  text-transform: uppercase;
+}
+
+.output:empty::before {
+  content: "HIER ERSCHEINT DEIN GEDICHT …";
+  font-size: 1rem;
+  font-style: italic;
+  color: #5d6690;
+}
+
+.line { margin: 0; white-space: pre-wrap; }
+.line:empty { min-height: 1.9em; }
+
+.text     { white-space: pre-wrap; }
+.operator { margin: 0 0.25em; font-style: italic; }
+
+.error {
+  margin: 0 0.25em;
+  font: 0.8rem var(--font-mono);
+  color: var(--error);
+}
+
+/* Zufallswort + hold-Button */
+.shuffle {
+  display: inline-block;
+  margin: 0 0.25em;
+  white-space: nowrap;
+}
+
+.shuffle-word {
+  color: var(--crt-text);
+  transition: color 0.3s;
+}
+
+.shuffle-word.flash { animation: word-in 0.5s ease; }
+
+@keyframes word-in {
+  from { opacity: 0.15; transform: translateY(-4px); }
+  to   { opacity: 1;    transform: translateY(0); }
+}
+
+.shuffle.is-held .shuffle-word { color: var(--crt-dim); }
+
+.hold-btn {
+  margin-left: 0.4em;
+  padding: 0.1em 0.6em;
+  vertical-align: middle;
+  font: bold 0.62rem var(--font-ui);
+  color: #111;
+  text-shadow: 1px 1px 0 #fff;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--raised);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.hold-btn:active { box-shadow: var(--sunken); }
+.hold-btn:disabled { opacity: 0.4; cursor: default; }
+
+.hold-btn[aria-pressed="true"] {
+  background: #ffc83c;
+  box-shadow: var(--sunken);
+  text-shadow: none;
+}
+
+/* ---------- 8. Footer ---------- */
+.site-footer {
+  margin-top: 1.5rem;
+  padding: 0.8rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #111;
+}
+
+.site-footer a {
+  color: #111;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.site-footer a:hover { color: #fff; }
+
+/* ---------- 9. Statusleiste + Ladebalken ---------- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 3px;
+  background: var(--face);
+  border: 1px solid #000;
+  box-shadow: var(--raised), 4px 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+.status-field {
+  flex: 1;
+  padding: 0.3em 0.7em;
+  font-size: 0.8rem;
+  box-shadow: var(--sunken);
+}
+
+.status-field.is-warning { color: #8a1c00; font-weight: bold; }
+
+.loader {
+  width: 130px;
+  height: 18px;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+  background: repeating-linear-gradient(90deg, #3a3a48 0 10px, transparent 10px 14px);
+  background-size: 14px 100%;
+  animation: loader-move 0.6s linear infinite;
+}
+
+@keyframes loader-move { to { background-position: 14px 0; } }
+
+/* ---------- 10. Layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 799px) {
+  .layout { grid-template-columns: 1fr; }
+  .output { font-size: 1.3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-word.flash, .loader { animation: none; }
+}
