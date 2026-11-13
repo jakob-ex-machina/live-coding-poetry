@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LIVE CODING POETRY</title>
 
-  <!-- Schriften: Sometype Mono (Überschrift/UI), Noto Sans Kawi (Ausgabe) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kawi:wght@400;700&family=Sometype+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -16,21 +15,20 @@
 <body>
   <div class="page">
 
-    <!-- ===== Kopfbereich: nur noch die zentrierte Überschrift ===== -->
+    <!-- ===== Kopfbereich: zentrierte Überschrift, plain ===== -->
     <header class="site-header">
       <h1 class="site-title">LIVE CODING POETRY</h1>
     </header>
 
-    <!-- ===== Hauptbereich: zwei Fenster nebeneinander ===== -->
     <main class="layout">
 
       <!-- LINKS: Eingabe -->
       <section class="window" aria-label="Eingabe">
         <div class="window-body">
-          <label for="code-input" class="visually-hidden">LIVE-CODING-EINGABE</label>
+          <label for="code-input" class="visually-hidden">Live-Coding-Eingabe</label>
           <textarea id="code-input" class="code-input" spellcheck="false" autocomplete="off"
                     autocapitalize="off" autocorrect="off"
-                    placeholder="&lt;SHUFFLE-WORDS&gt;&lt;EQUALITY-OPERATOR: &quot;==&quot;&gt;&lt;SHUFFLE-WORDS&gt;"></textarea>
+                    placeholder="<shuffle-words><equality-operator: &quot;==&quot;><shuffle-words>"></textarea>
 
           <div class="toolbar">
             <button type="button" id="clear-btn" class="btn">EINGABE LEEREN</button>
@@ -77,15 +75,16 @@
     <footer class="site-footer">
       <p>
         <a href="https://jakob-buurman.de/impressum">IMPRESSUM</a>
-        &nbsp;·&nbsp;
+        <span class="dot">·</span>
         ERSTELLT UNTER BENUTZUNG VON CLAUDE
-        &nbsp;·&nbsp;
-        WORTDATENBANK: <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0),
+        <span class="dot">·</span>
+        WORTDATENBANK:
+        <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0),
         <a href="https://github.com/PenTestical/german_names">GERMAN_NAMES</a>
       </p>
     </footer>
 
-    <!-- ===== Statusleiste: Ladeanzeige + Hinweise ===== -->
+    <!-- ===== Statusleiste ===== -->
     <div class="statusbar">
       <div id="status-text" class="status-field" role="status">LADE WORTLISTE …</div>
       <div id="loader" class="loader" role="progressbar" aria-label="Wortliste wird geladen"></div>
