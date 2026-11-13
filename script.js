@@ -1,10 +1,7 @@
 /* =====================================================================
    Live Coding Poetry – script.js
-   Angepasst:
-   - Cheat Sheet ist jetzt ein Button-Grid unter dem Code-Input.
-     Klick fügt den Befehl an der Cursor-Position ein.
-   - Keine Titelleisten mehr.
-   - Ausgabe einfarbig (Farben kommen aus dem CSS).
+   Vollständig, inkl. buildCheatButtons() (war in der letzten Version
+   versehentlich verloren gegangen – dadurch startete die App nicht).
    ===================================================================== */
 
 'use strict';
@@ -56,7 +53,7 @@ const appState = {
    ===================================================================== */
 function init() {
   cacheDomElements();
-  buildCheatButtons();
+  buildCheatButtons();     // <-- war vorher nicht definiert
 
   appState.customWords = loadCustomWords();
   renderChips();
@@ -93,6 +90,49 @@ function bindEvents() {
   dom.copyBtn.addEventListener('click', handleCopy);
   dom.wordForm.addEventListener('submit', handleAddWord);
   dom.resetWordsBtn.addEventListener('click', handleResetWords);
+}
+
+
+/* =====================================================================
+   A2) CHEAT-SHEET-BUTTONS – fügen Befehl an Cursor-Position ein
+   ===================================================================== */
+function buildCheatButtons() {
+  const container = appState.dom.cheatButtons;
+  if (!container) return;
+  container.replaceChildren();
+
+  // Baustein-Liste: shuffle, br und alle Operatoren
+  const items = [
+    { code: '<shuffle-words>', label: 'shuffle-words' },
+    { code: '<br>',            label: 'br' }
+  ];
+  appState.operators.forEach((op) => {
+    items.push({ code: '<' + op.command + ': "' + op.symbol + '">', label: op.text });
+  });
+
+  items.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cheat-btn';
+    btn.textContent = item.code;
+    btn.title = item.label;
+    btn.addEventListener('click', () => insertAtCursor(item.code));
+    container.appendChild(btn);
+  });
+}
+
+/** Fügt Text an der aktuellen Cursor-Position im Code-Feld ein. */
+function insertAtCursor(text) {
+  const input = appState.dom.codeInput;
+  const start = input.selectionStart ?? input.value.length;
+  const end   = input.selectionEnd   ?? input.value.length;
+  const before = input.value.slice(0, start);
+  const after  = input.value.slice(end);
+  input.value = before + text + after;
+  const newPos = start + text.length;
+  input.setSelectionRange(newPos, newPos);
+  input.focus();
+  scheduleRender();
 }
 
 
@@ -406,3 +446,4 @@ function updateStatus() {
   }
   const total = getAllWords().length;
   if (appState.usingFallback) {
+   
