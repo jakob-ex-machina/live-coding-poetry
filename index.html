@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Coding Poetry</title>
+
+  <!-- Alle Pfade sind relativ, damit es auf GitHub Pages funktioniert -->
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ===== Kopfbereich: Titel + Cheat Sheet ===== -->
+    <header class="site-header">
+      <div class="title-block">
+        <h1 class="site-title">Live Coding Poetry</h1>
+        <p class="site-subtitle">a live coding poetry instrument</p>
+      </div>
+
+      <!-- Einklappbares Cheat Sheet (der Inhalt wird von script.js befüllt) -->
+      <details class="cheatsheet">
+        <summary class="btn">? Cheat Sheet</summary>
+        <div class="cheatsheet-panel window">
+          <div class="titlebar">
+            <span class="titlebar-text">Befehle</span>
+            <span class="titlebar-buttons" aria-hidden="true"><span class="tb-btn">_</span><span class="tb-btn">□</span><span class="tb-btn">×</span></span>
+          </div>
+          <div class="window-body">
+            <table class="cheat-table">
+              <tbody id="cheat-body"></tbody>
+            </table>
+            <p class="cheat-note">Unbekannte Befehle erscheinen als roter Fehlertext.</p>
+          </div>
+        </div>
+      </details>
+    </header>
+
+    <!-- ===== Hauptbereich: zwei Fenster nebeneinander ===== -->
+    <main class="layout">
+
+      <!-- LINKS: Eingabe -->
+      <section class="window" aria-labelledby="editor-title">
+        <div class="titlebar">
+          <span class="titlebar-text" id="editor-title">Eingabe.code</span>
+          <span class="titlebar-buttons" aria-hidden="true"><span class="tb-btn">_</span><span class="tb-btn">□</span><span class="tb-btn">×</span></span>
+        </div>
+
+        <div class="window-body">
+          <label for="code-input" class="visually-hidden">Live-Coding-Eingabe</label>
+          <!-- &quot; ist ein Anführungszeichen innerhalb des Attributs -->
+          <textarea id="code-input" class="code-input" spellcheck="false" autocomplete="off"
+                    autocapitalize="off" autocorrect="off"
+                    placeholder="&lt;shuffle-words&gt;&lt;equality-operator: &quot;==&quot;&gt;&lt;shuffle-words&gt;"></textarea>
+
+          <div class="toolbar">
+            <button type="button" id="clear-btn" class="btn">Eingabe leeren</button>
+          </div>
+
+          <!-- Eigene Wörter -->
+          <fieldset class="groupbox">
+            <legend>Eigene Wörter</legend>
+
+            <form id="word-form" class="word-form" autocomplete="off">
+              <input type="text" id="word-input" class="text-input" maxlength="60"
+                     placeholder="neues Wort …" aria-label="Neues Wort">
+              <button type="submit" class="btn">Wort hinzufügen</button>
+            </form>
+
+            <p id="word-feedback" class="feedback" aria-live="polite"></p>
+
+            <ul id="chip-list" class="chip-list" aria-label="Bisher hinzugefügte Wörter"></ul>
+
+            <button type="button" id="reset-words-btn" class="btn btn-small">eigene Wörter zurücksetzen</button>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- RECHTS: Ausgabe -->
+      <section class="window" aria-labelledby="output-title">
+        <div class="titlebar">
+          <span class="titlebar-text" id="output-title">Gedicht.txt</span>
+          <span class="titlebar-buttons" aria-hidden="true"><span class="tb-btn">_</span><span class="tb-btn">□</span><span class="tb-btn">×</span></span>
+        </div>
+
+        <div class="window-body">
+          <div id="output" class="output" aria-label="Gerenderte Ausgabe"></div>
+
+          <div class="toolbar">
+            <button type="button" id="copy-btn" class="btn">Ausgabe kopieren</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== Statusleiste: Ladeanzeige + Hinweise ===== -->
+    <footer class="statusbar">
+      <div id="status-text" class="status-field" role="status">Lade Wortliste …</div>
+      <div id="loader" class="loader" role="progressbar" aria-label="Wortliste wird geladen"></div>
+    </footer>
+
+  </div>
+</body>
+</html>
