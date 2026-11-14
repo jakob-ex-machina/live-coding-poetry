@@ -47,8 +47,19 @@
                     autocapitalize="off" autocorrect="off"
                     placeholder="&lt;shuffle-word&gt; &lt;equality-operator: &quot;==&quot;&gt; &lt;shuffle-word&gt;"></textarea>
 
+          <!-- Werkzeugleiste: Leeren + GLOBALE Wortdatenbank-Option -->
           <div class="toolbar">
             <button type="button" id="clear-btn" class="btn">EINGABE LEEREN</button>
+
+            <!--
+              Gilt für die gesamte Ausgabe: angehakt = die Wortdatenbank ist
+              Teil des Zufallspools, nicht angehakt = nur eigene Wörter und Samples.
+            -->
+            <label class="check-row"
+                   title="NICHT ANGEHAKT: ZUFALLSWÖRTER KOMMEN NUR AUS EIGENEN WÖRTERN UND SAMPLES">
+              <input type="checkbox" id="use-database" checked>
+              WORTDATENBANK EINBEZIEHEN
+            </label>
           </div>
 
           <!-- Bausteine: werden per JavaScript erzeugt -->
@@ -57,48 +68,44 @@
             <div id="cheat-buttons" class="cheat-buttons"></div>
           </fieldset>
 
-          <!-- Eigene Wörter: einzeln oder als Bulk (Semikolon), Modus "nur eigene Wörter" -->
+          <!-- Sampling: Fremdtext einspeisen (Titel steht über dem Textfeld) -->
           <fieldset class="groupbox">
-            <legend>EIGENE WÖRTER</legend>
+            <legend>SAMPLE (NUR SUBSTANTIVE)</legend>
 
-            <form id="word-form" class="word-form" autocomplete="off">
-              <input type="text" id="word-input" class="text-input" maxlength="2000"
-                     placeholder="WORT ODER MEHRERE MIT „;“ TRENNEN …" aria-label="Neue Wörter (mehrere mit Semikolon trennen)">
-              <button type="submit" class="btn btn-small">HINZUFÜGEN</button>
-              <button type="button" id="reset-words-btn" class="btn btn-small">ZURÜCKSETZEN</button>
-            </form>
-
-            <!-- Ohne Wortliste arbeiten: nur eigene Wörter (und Samples) im Pool -->
-            <label class="check-row">
-              <input type="checkbox" id="only-custom">
-              NUR EIGENE WÖRTER (OHNE WORTLISTE)
-            </label>
-
-            <p id="word-feedback" class="feedback" aria-live="polite"></p>
-
-            <ul id="chip-list" class="chip-list scroller" aria-label="Bisher hinzugefügte Wörter"></ul>
-          </fieldset>
-
-          <!-- Sampling: Fremdtext einspeisen -->
-          <fieldset class="groupbox">
-            <legend>SAMPLE</legend>
+            <div class="sample-row">
+              <input type="text" id="sample-source" class="text-input" maxlength="40"
+                     placeholder="TITEL: FREMDTEXT" aria-label="Titel des Samples">
+              <input type="color" id="sample-color" class="color-input" value="#33ccff"
+                     title="MARKIERUNGSFARBE (UNVERÄNDERT = AUTOMATISCH)" aria-label="Markierungsfarbe">
+              <button type="button" id="sample-btn" class="btn btn-small">SAMPLEN</button>
+            </div>
 
             <label for="sample-input" class="visually-hidden">Fremdtext einfügen</label>
             <textarea id="sample-input" class="sample-input scroller" rows="2"
                       spellcheck="false" autocomplete="off"
                       placeholder="FREMDTEXT EINFÜGEN (Z. B. EIN GEDICHT) …"></textarea>
 
-            <div class="sample-row">
-              <input type="text" id="sample-source" class="text-input" maxlength="40"
-                     placeholder="FREMDTEXT" aria-label="Titel des Samples">
-              <input type="color" id="sample-color" class="color-input" value="#33ccff"
-                     title="MARKIERUNGSFARBE (UNVERÄNDERT = AUTOMATISCH)" aria-label="Markierungsfarbe">
-              <button type="button" id="sample-btn" class="btn btn-small">SAMPLEN</button>
-            </div>
-
             <p id="sample-feedback" class="feedback" aria-live="polite"></p>
 
             <ul id="sample-legend" class="chip-list sample-legend scroller" aria-label="Aktive Samples"></ul>
+          </fieldset>
+
+          <!-- Eigene Wörter: einzeln oder als Bulk (Semikolon), mit eigener Markierungsfarbe -->
+          <fieldset class="groupbox">
+            <legend>EIGENE WÖRTER</legend>
+
+            <form id="word-form" class="word-form" autocomplete="off">
+              <input type="text" id="word-input" class="text-input" maxlength="2000"
+                     placeholder="WORT ODER MEHRERE MIT „;“ TRENNEN …" aria-label="Neue Wörter (mehrere mit Semikolon trennen)">
+              <input type="color" id="own-color" class="color-input" value="#33ccff"
+                     title="MARKIERUNGSFARBE DER EIGENEN WÖRTER" aria-label="Farbe der eigenen Wörter">
+              <button type="submit" class="btn btn-small">HINZUFÜGEN</button>
+              <button type="button" id="reset-words-btn" class="btn btn-small">ZURÜCKSETZEN</button>
+            </form>
+
+            <p id="word-feedback" class="feedback" aria-live="polite"></p>
+
+            <ul id="chip-list" class="chip-list scroller" aria-label="Bisher hinzugefügte Wörter"></ul>
           </fieldset>
         </div>
       </section>
