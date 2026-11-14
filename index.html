@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LIVE CODING POETRY</title>
 
-  <!-- Schrift: nur noch Sometype Mono (die Ausgabe nutzt jetzt dieselbe Schrift wie die ganze Seite) -->
+  <!-- Schrift: Sometype Mono (gilt für die gesamte Seite inklusive Ausgabe) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sometype+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -15,11 +15,13 @@
 </head>
 <body>
   <!--
-    Seitenaufbau (von oben nach unten):
-    1. Überschrift
-    2. Eingabe- und Ausgabefenster (nebeneinander)
-    3. Statusleiste (schließt direkt an die Fenster an)
-    4. Footer (unterstes Element der Seite)
+    Seitenaufbau (von oben nach unten). Auf einem PC-Bildschirm füllt die
+    Seite genau die Fensterhöhe aus – gescrollt wird nur INNERHALB von
+    Eingabe und Ausgabe (und nur vertikal), nie die ganze Seite.
+      1. Überschrift
+      2. Eingabe- und Ausgabefenster (nebeneinander, feste Spaltenbreiten)
+      3. Statusleiste (schließt direkt an die Fenster an)
+      4. Footer (unterstes Element der Seite)
   -->
   <div class="page">
 
@@ -37,13 +39,13 @@
           <label for="code-input" class="visually-hidden">Live-Coding-Eingabe</label>
 
           <!--
-            wrap="off": Zeilen werden nie umbrochen, stattdessen erscheint
-            ein horizontaler Scroller (zusammen mit dem vertikalen).
+            Lange Zeilen werden umbrochen (kein horizontaler Scroller);
+            bei viel Text erscheint der vertikale Scroller.
           -->
-          <textarea id="code-input" class="code-input scroller" wrap="off"
+          <textarea id="code-input" class="code-input scroller"
                     spellcheck="false" autocomplete="off"
                     autocapitalize="off" autocorrect="off"
-                    placeholder="&lt;shuffle-words&gt; &lt;equality-operator: &quot;==&quot;&gt; &lt;shuffle-words&gt;"></textarea>
+                    placeholder="&lt;shuffle-word&gt; &lt;equality-operator: &quot;==&quot;&gt; &lt;shuffle-word&gt;"></textarea>
 
           <div class="toolbar">
             <button type="button" id="clear-btn" class="btn">EINGABE LEEREN</button>
@@ -53,32 +55,27 @@
           <fieldset class="groupbox">
             <legend>BAUSTEINE – KLICKEN ZUM EINFÜGEN</legend>
             <div id="cheat-buttons" class="cheat-buttons"></div>
-            <p class="hint">
-              TIPP: CODE MARKIEREN UND DANN DEN SHUFFLE-TIME-BAUSTEIN KLICKEN – DIE ZEIT GILT
-              DANN NUR FÜR DIE AUSWAHL. OHNE SCHLIESSENDEN BAUSTEIN GILT SIE BIS ZUM ENDE.
-            </p>
           </fieldset>
 
-          <!-- Eigene Wörter -->
+          <!-- Eigene Wörter: Formular und Zurücksetzen in einer Zeile (spart Höhe) -->
           <fieldset class="groupbox">
             <legend>EIGENE WÖRTER</legend>
 
             <form id="word-form" class="word-form" autocomplete="off">
               <input type="text" id="word-input" class="text-input" maxlength="60"
                      placeholder="NEUES WORT …" aria-label="Neues Wort">
-              <button type="submit" class="btn">WORT HINZUFÜGEN</button>
+              <button type="submit" class="btn btn-small">WORT HINZUFÜGEN</button>
+              <button type="button" id="reset-words-btn" class="btn btn-small">EIGENE WÖRTER ZURÜCKSETZEN</button>
             </form>
 
             <p id="word-feedback" class="feedback" aria-live="polite"></p>
 
-            <ul id="chip-list" class="chip-list" aria-label="Bisher hinzugefügte Wörter"></ul>
-
-            <button type="button" id="reset-words-btn" class="btn btn-small">EIGENE WÖRTER ZURÜCKSETZEN</button>
+            <ul id="chip-list" class="chip-list scroller" aria-label="Bisher hinzugefügte Wörter"></ul>
           </fieldset>
         </div>
       </section>
 
-      <!-- RECHTS: Ausgabe (scrollt vertikal und horizontal) -->
+      <!-- RECHTS: Ausgabe (scrollt nur vertikal) -->
       <section class="window" aria-label="Gedicht">
         <div class="window-body">
           <div id="output" class="output scroller" aria-label="Gerenderte Ausgabe"></div>
@@ -98,7 +95,10 @@
 
     <!-- ===== 4. Footer: unterstes Element der Seite ===== -->
     <footer class="site-footer">
-      <p>KONZEPT VON JAKOB BUURMAN · CODING-UMSETZUNG UNTER VERWENDUNG VON KI</p>
+      <p>
+        KONZEPT VON <a href="https://jakob-buurman.de/">JAKOB BUURMAN</a>
+        · CODING-UMSETZUNG UNTER VERWENDUNG VON KI
+      </p>
       <p>
         WORTDATENBANK:
         <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0)
