@@ -9,17 +9,22 @@
      <br>                             Zeilenumbruch
      <equality-operator: "==">        Operatoren (werden als Wort ausgegeben,
      <comparison-operator: ">"> ...   z. B. "==" → "wie", ">" → "größer als")
-     <shuffle-time: 5> ... </shuffle-time>
-                                      legt die Wechselzeit (Sekunden) der
-                                      Zufallswörter dazwischen fest
+     <shuffle-time: "5"> ... </shuffle-time>
+                                      legt die Wechselzeit (Sekunden, IMMER in
+                                      Anführungszeichen) der Zufallswörter
+                                      dazwischen fest
+     <shuffle-samplesize: "TITEL1"; "TITEL2"; "WORTDATENBANK"> ... </shuffle-samplesize>
+                                      Zufallswörter dazwischen werden nur aus den
+                                      genannten Quellen gezogen: Sample-Titel,
+                                      "EIGENE WÖRTER" und/oder "WORTDATENBANK"
 
    Alles andere im Eingabefeld ist normaler Text. Zeilenumbrüche und
    Mehrfach-Leerzeichen im Eingabefeld sind nur Formatierung – eine
    Ausgabezeile entsteht ausschließlich durch <br>.
 
    Zusätze:
-     - "NUR EIGENE WÖRTER": Zufallswörter kommen nur aus eigenen Wörtern
-       (und Samples), die Wortliste wird ignoriert.
+     - "WORTDATENBANK EINBEZIEHEN" (global): ist der Haken aus, kommen alle
+       Zufallswörter nur aus eigenen Wörtern und Samples.
      - Eigene Wörter lassen sich per Semikolon gesammelt hinzufügen.
      - SAMPLE: Fremdtext wird gegen die Wortdatenbank abgeglichen; Treffer
        (Singular + Plural) kommen farbig markiert in den Pool.
@@ -31,7 +36,7 @@
    ===================================================================== */
 
 // Standard-Wechselzeit eines Zufallsworts (ohne <shuffle-time>)
-const DEFAULT_SHUFFLE_SECONDS = 10;
+const DEFAULT_SHUFFLE_SECONDS = 3;
 
 // Grenzen für <shuffle-time: n> (außerhalb wird automatisch begrenzt)
 const MIN_SHUFFLE_SECONDS = 1;
@@ -93,7 +98,8 @@ const copyLabel = copyBtn.textContent;   // Originalbeschriftung merken
 const wordForm = document.getElementById("word-form");
 const wordInput = document.getElementById("word-input");
 const wordFeedback = document.getElementById("word-feedback");
-const onlyCustomBox = document.getElementById("only-custom");
+const dbBox = document.getElementById("use-database");
+const ownColor = document.getElementById("own-color");
 
 const chipList = document.getElementById("chip-list");
 const resetWordsBtn = document.getElementById("reset-words-btn");
@@ -116,8 +122,19 @@ let wordDatabase = [];
 // Vom Nutzer hinzugefügte Wörter
 let customWords = [];
 
-// true = Wortliste ignorieren, nur eigene Wörter + Samples verwenden
-let useOnlyCustom = false;
+// GLOBAL: false = Wortdatenbank ignorieren, nur eigene Wörter + Samples
+let dbIncluded = true;
+
+// Namen für <shuffle-samplesize> (klein geschrieben; Abgleich ohne Groß-/Kleinschreibung)
+const DB_NAME = "wortdatenbank";
+const OWN_NAME = "eigene wörter";
+
+/*
+  Die eigenen Wörter verhalten sich wie ein Sample: Sie haben eine Quelle
+  und eine (vom Nutzer wählbare) Markierungsfarbe. Ändert sich die Farbe,
+  gilt sie sofort für alle eigenen Wörter in der Ausgabe.
+*/
+const ownSample = { source: "EIGENE WÖRTER", key: OWN_NAME, color: "#33ccff", count: 0 };
 
 /*
   Invertierte Lookup-Map (beim Laden gebaut):
@@ -181,29 +198,53 @@ const OPERATOR_RULES = OPERATORS.map(op => ({
     wrapEnd = (optional) Schluss-Tag: Ist im Eingabefeld Text markiert,
               wird die Markierung von text und wrapEnd umschlossen
     hint    = Tooltip
+
+  Sortierung: Kategorien nach voraussichtlicher Häufigkeit im Einsatz
+  (1. Grundbausteine, 2. Operatoren, 3. Bereichsbefehle), innerhalb jeder
+  Kategorie alphabetisch. Zwischen den Kategorien steht ein Trenner.
 */
-const BUILDING_BLOCKS = [
-    {
-        text: "<shuffle-word>",
-        hint: "EIN ZUFALLSWORT, DAS SICH REGELMÄSSIG ÄNDERT"
-    },
-    {
-        text: "<br>",
-        hint: "ZEILENUMBRUCH"
-    },
-    ...OPERATORS.map(op => ({
-        text: `<${op.type}: "${op.symbol}">`,
-        hint: `WIRD AUSGEGEBEN ALS: ${op.word.toUpperCase()}`
-    })),
-    {
-        text: "<shuffle-time: 5>",
-        wrapEnd: "</shuffle-time>",
-        hint: "WECHSELZEIT DER ZUFALLSWÖRTER IN SEKUNDEN – MIT MARKIERUNG NUR FÜR DIE AUSWAHL"
-    },
-    {
-        text: "</shuffle-time>",
-        hint: "ENDE DER WECHSELZEIT (DANACH GILT WIEDER DIE VORHERIGE)"
-    }
+const BLOCK_GROUPS = [
+
+    // 1. Grundbausteine (am häufigsten)
+    [
+        { text: "<br>", hint: "ZEILENUMBRUCH" },
+        { text: "<shuffle-word>", hint: "EIN ZUFALLSWORT, DAS SICH REGELMÄSSIG ÄNDERT" }
+    ],
+
+    // 2. Operatoren (alphabetisch nach Typ, dann nach Symbol)
+    [...OPERATORS]
+        .sort((a, b) =>
+            a.type !== b.type
+                ? (a.type < b.type ? -1 : 1)
+                : (a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 : 0)
+        )
+        .map(op => ({
+            text: `<${op.type}: "${op.symbol}">`,
+            hint: `WIRD AUSGEGEBEN ALS: ${op.word.toUpperCase()}`
+        })),
+
+    // 3. Bereichsbefehle (öffnender Baustein + Schluss-Baustein, alphabetisch)
+    [
+        {
+            text: '<shuffle-samplesize: "WORTDATENBANK">',
+            wrapEnd: "</shuffle-samplesize>",
+            hint: 'QUELLEN DER ZUFALLSWÖRTER – SAMPLE-TITEL, "EIGENE WÖRTER", "WORTDATENBANK", MIT ";" TRENNEN – MIT MARKIERUNG NUR FÜR DIE AUSWAHL'
+        },
+        {
+            text: "</shuffle-samplesize>",
+            hint: "ENDE DES QUELLEN-BEREICHS (DANACH GILT WIEDER DIE VORHERIGE AUSWAHL)"
+        },
+        {
+            text: '<shuffle-time: "5">',
+            wrapEnd: "</shuffle-time>",
+            hint: "WECHSELZEIT DER ZUFALLSWÖRTER IN SEKUNDEN (IMMER IN ANFÜHRUNGSZEICHEN) – MIT MARKIERUNG NUR FÜR DIE AUSWAHL"
+        },
+        {
+            text: "</shuffle-time>",
+            hint: "ENDE DER WECHSELZEIT (DANACH GILT WIEDER DIE VORHERIGE)"
+        }
+    ]
+
 ];
 
 
@@ -220,9 +261,10 @@ let dbStatus = { text: "LADE WORTLISTE …", error: false };
 */
 function refreshStatus() {
 
-    if (useOnlyCustom) {
+    if (!dbIncluded) {
         const size = customWords.length + sampleEntries.length;
-        statusText.textContent = `MODUS: NUR EIGENE WÖRTER (${size})`;
+        statusText.textContent =
+            `WORTDATENBANK NICHT EINBEZOGEN – NUR EIGENE WÖRTER UND SAMPLES (${size})`;
         statusText.classList.remove("is-warning");
         return;
     }
@@ -356,18 +398,34 @@ async function loadWordList() {
    ===================================================================== */
 
 /*
-  Zieht ein Zufallswort aus dem Pool: Wortliste (außer im Modus "nur
-  eigene Wörter") + eigene Wörter + Sample-Wörter. Es wird ein gemeinsamer
-  Index über alle Teile gewürfelt (ohne die 150.000+ Wörter bei jedem
-  Wechsel zu kopieren). Das vorherige Wort wird – wenn möglich – nicht
-  direkt wiederholt.
+  Zieht ein Zufallswort aus dem Pool. Der Pool besteht aus
+    - der Wortdatenbank (nur wenn global eingebunden),
+    - den eigenen Wörtern und
+    - den Sample-Wörtern.
+  Mit "sources" (Liste kleingeschriebener Namen aus <shuffle-samplesize>)
+  wird der Pool eingeschränkt: "wortdatenbank", "eigene wörter" und/oder
+  Sample-Titel. sources = null bedeutet: kein Bereich, alles gilt.
+  (Ist die Wortdatenbank global ausgeschaltet, bleibt sie auch dann draußen,
+  wenn "WORTDATENBANK" im Bereich genannt wird.)
 
-  Rückgabe: { word, sample }  (sample = null bei normalen Wörtern)
+  Es wird ein gemeinsamer Index über alle Teile gewürfelt (ohne die
+  150.000+ Wörter bei jedem Wechsel zu kopieren). Das vorherige Wort wird –
+  wenn möglich – nicht direkt wiederholt.
+
+  Rückgabe: { word, sample }  (sample = null bei Wörtern der Wortdatenbank)
 */
-function pickEntry(previous = "") {
+function pickEntry(previous = "", sources = null) {
 
-    const dbSize = useOnlyCustom ? 0 : wordDatabase.length;
-    const total = dbSize + customWords.length + sampleEntries.length;
+    const useDb = dbIncluded && (!sources || sources.includes(DB_NAME));
+    const useOwn = !sources || sources.includes(OWN_NAME);
+
+    const sampled = sources
+        ? sampleEntries.filter(entry => sources.includes(entry.sample.key))
+        : sampleEntries;
+
+    const dbSize = useDb ? wordDatabase.length : 0;
+    const ownSize = useOwn ? customWords.length : 0;
+    const total = dbSize + ownSize + sampled.length;
 
     if (total === 0) return { word: "", sample: null };
 
@@ -379,11 +437,11 @@ function pickEntry(previous = "") {
 
         if (index < dbSize) {
             entry = { word: wordDatabase[index], sample: null };
-        } else if ((index -= dbSize) < customWords.length) {
-            entry = { word: customWords[index], sample: null };
+        } else if ((index -= dbSize) < ownSize) {
+            entry = { word: customWords[index], sample: ownSample };
         } else {
-            const sampled = sampleEntries[index - customWords.length];
-            entry = { word: sampled.word, sample: sampled.sample };
+            const picked = sampled[index - ownSize];
+            entry = { word: picked.word, sample: picked.sample };
         }
 
         if (entry.word !== previous) break;
@@ -403,18 +461,30 @@ function createCheatButtons() {
 
     cheatButtons.replaceChildren();
 
-    BUILDING_BLOCKS.forEach(block => {
+    BLOCK_GROUPS.forEach((group, groupIndex) => {
 
-        const button = document.createElement("button");
+        // Trenner zwischen den Kategorien
+        if (groupIndex > 0) {
+            const separator = document.createElement("span");
+            separator.className = "cheat-sep";
+            separator.setAttribute("aria-hidden", "true");
+            cheatButtons.appendChild(separator);
+        }
 
-        button.type = "button";
-        button.className = "cheat-btn";
-        button.textContent = block.text;
-        button.title = block.hint;
+        group.forEach(block => {
 
-        button.addEventListener("click", () => insertBlock(block));
+            const button = document.createElement("button");
 
-        cheatButtons.appendChild(button);
+            button.type = "button";
+            button.className = "cheat-btn";
+            button.textContent = block.text;
+            button.title = block.hint;
+
+            button.addEventListener("click", () => insertBlock(block));
+
+            cheatButtons.appendChild(button);
+
+        });
 
     });
 
@@ -461,8 +531,11 @@ function insertBlock(block) {
 */
 const TAG_REGEX = /<[^<>"]*(?:"[^"]*"[^<>"]*)*>/g;
 
-// <shuffle-time: 5>, auch 2.5 oder 2,5, optional mit "s"
-const SHUFFLE_TIME_OPEN = /^<shuffle-time:\s*(\d+(?:[.,]\d+)?)\s*(?:s|sek)?\s*>$/;
+// <shuffle-time: "5">, auch "2.5" oder "2,5" – die Zahl MUSS in Anführungszeichen stehen
+const SHUFFLE_TIME_OPEN = /^<shuffle-time:\s*"\s*(\d+(?:[.,]\d+)?)\s*"\s*>$/;
+
+// <shuffle-samplesize: "TITEL1"; "TITEL2"; "WORTDATENBANK">  (ein oder mehrere Namen in Anführungszeichen, mit ";" getrennt)
+const SAMPLESIZE_OPEN = /^<shuffle-samplesize:\s*"[^"]*"(?:\s*;\s*"[^"]*")*\s*>$/;
 
 // Zeilenumbruch: <br>, <br/>, <br />
 const BREAK_TAG = /^<br\s*\/?>$/;
@@ -471,7 +544,9 @@ const BREAK_TAG = /^<br\s*\/?>$/;
   Wandelt den Code in eine Liste von Elementen um:
 
     { type: "text",     value }     normaler Text
-    { type: "word",     seconds }   Zufallswort mit seiner Wechselzeit
+    { type: "word",     seconds, sources }
+                                    Zufallswort mit Wechselzeit und Quellen
+                                    (sources = null: keine Einschränkung)
     { type: "operator", word }      Operator als Wort
     { type: "br" }                  Zeilenumbruch
     { type: "error",    value }     unbekannter / falsch verwendeter Baustein
@@ -481,11 +556,14 @@ const BREAK_TAG = /^<br\s*\/?>$/;
     - <shuffle-time: n> legt eine Zeit oben auf den Stapel,
     - </shuffle-time> nimmt sie wieder weg (es gilt die vorherige Zeit),
     - ohne schließenden Baustein gilt die Zeit bis zum Ende des Codes.
+  <shuffle-samplesize> funktioniert genauso (eigener Stapel), nur steuert
+  es, aus welchen Quellen die folgenden Zufallswörter gezogen werden.
 */
 function parseCode(code) {
 
     const tokens = [];
     const timeStack = [];
+    const sourceStack = [];
     let lastIndex = 0;
 
     // Aktuell gültige Wechselzeit (oberstes Element des Stapels)
@@ -493,6 +571,12 @@ function parseCode(code) {
         timeStack.length > 0
             ? timeStack[timeStack.length - 1]
             : DEFAULT_SHUFFLE_SECONDS;
+
+    // Aktuell gültige Quellen (null = keine Einschränkung)
+    const currentSources = () =>
+        sourceStack.length > 0
+            ? sourceStack[sourceStack.length - 1]
+            : null;
 
     // Text zwischen zwei Bausteinen: Whitespace vereinheitlichen
     const pushText = raw => {
@@ -510,7 +594,7 @@ function parseCode(code) {
 
         // --- Zufallswort ---
         if (tag === "<shuffle-word>") {
-            tokens.push({ type: "word", seconds: currentSeconds() });
+            tokens.push({ type: "word", seconds: currentSeconds(), sources: currentSources() });
             continue;
         }
 
@@ -537,6 +621,24 @@ function parseCode(code) {
                 timeStack.pop();
             } else {
                 // schließender Baustein ohne öffnenden
+                tokens.push({ type: "error", value: raw });
+            }
+            continue;
+        }
+
+        // --- Quellen-Bereich beginnt ---
+        if (SAMPLESIZE_OPEN.test(tag)) {
+            sourceStack.push(
+                [...tag.matchAll(/"([^"]*)"/g)].map(name => name[1].trim())
+            );
+            continue;
+        }
+
+        // --- Quellen-Bereich endet ---
+        if (tag === "</shuffle-samplesize>") {
+            if (sourceStack.length > 0) {
+                sourceStack.pop();
+            } else {
                 tokens.push({ type: "error", value: raw });
             }
             continue;
@@ -575,6 +677,7 @@ function parseCode(code) {
 
   Slot-Felder:
     word       aktuelles Wort
+    sources    erlaubte Quellen (aus <shuffle-samplesize>) oder null
     sample     Sample des Worts ({ source, color }) oder null
     held       true = eingefroren
     intervalMs Wechselzeit in Millisekunden
@@ -587,6 +690,7 @@ function createSlot() {
     return {
         word: "",
         sample: null,
+        sources: null,
         held: false,
         intervalMs: 0,
         nextChange: 0,
@@ -610,7 +714,7 @@ function showWord(slot) {
 
 // Neues Wort ziehen und anzeigen
 function changeWord(slot) {
-    const entry = pickEntry(slot.word);
+    const entry = pickEntry(slot.word, slot.sources);
     slot.word = entry.word;
     slot.sample = entry.sample;
     showWord(slot);
@@ -627,7 +731,7 @@ function updateSlotView(slot) {
 
     if (slot.sample) {
         slot.wrapEl.style.setProperty("--sample-color", slot.sample.color);
-        slot.wrapEl.title = `SAMPLE: ${slot.sample.source}`;
+        slot.wrapEl.title = `QUELLE: ${slot.sample.source}`;
     } else {
         slot.wrapEl.style.removeProperty("--sample-color");
         slot.wrapEl.removeAttribute("title");
@@ -804,9 +908,12 @@ function renderPoem() {
                     slot.nextChange = now + slot.intervalMs;
                 }
 
+                // Quellen-Bereich aus dem Code übernehmen
+                slot.sources = token.sources;
+
                 // Noch kein Wort (z. B. Wortliste war noch nicht geladen)
                 if (!slot.word) {
-                    const entry = pickEntry();
+                    const entry = pickEntry("", slot.sources);
                     slot.word = entry.word;
                     slot.sample = entry.sample;
                 }
@@ -1049,21 +1156,35 @@ resetWordsBtn.addEventListener("click", () => {
 
 });
 
-// Modus "nur eigene Wörter": Wortliste wird im Pool ignoriert
-onlyCustomBox.addEventListener("change", () => {
+// GLOBAL: Wortdatenbank einbeziehen (angehakt) oder nur eigene Wörter + Samples
+dbBox.addEventListener("change", () => {
 
-    useOnlyCustom = onlyCustomBox.checked;
+    dbIncluded = dbBox.checked;
 
     refreshStatus();
 
-    if (useOnlyCustom && customWords.length + sampleEntries.length === 0) {
-        setFeedback("NOCH KEINE EIGENEN WÖRTER – ZUERST WÖRTER HINZUFÜGEN.", true);
+    if (!dbIncluded && customWords.length + sampleEntries.length === 0) {
+        setFeedback("NOCH KEINE EIGENEN WÖRTER ODER SAMPLES – ZUERST HINZUFÜGEN.", true);
     } else {
         setFeedback("");
     }
 
     // Leere Slots können jetzt ein Wort bekommen
     renderPoem();
+
+});
+
+// Farbe der eigenen Wörter: wirkt sofort auf alle eigenen Wörter in der Ausgabe
+ownColor.addEventListener("input", () => {
+
+    ownSample.color = ownColor.value;
+
+    slots.forEach(slot => {
+        if (slot.sample === ownSample) updateSlotView(slot);
+    });
+
+    // Auto-Farbe für Samples muss sich von der neuen Farbe unterscheiden
+    if (!colorTouched) previewAutoColor();
 
 });
 
@@ -1128,7 +1249,7 @@ const isNear = (hue, list, tolerance) =>
 */
 function nextAutoColor() {
 
-    const used = samples.map(sample => hexToHue(sample.color));
+    const used = [...samples, ownSample].map(sample => hexToHue(sample.color));
 
     for (let i = 0; i < 80; i++) {
 
@@ -1231,8 +1352,11 @@ function sampleText() {
         return;
     }
 
+    const source = sampleSource.value.trim() || DEFAULT_SAMPLE_SOURCE;
+
     const sample = {
-        source: sampleSource.value.trim() || DEFAULT_SAMPLE_SOURCE,
+        source,
+        key: source.toLowerCase(),   // für <shuffle-samplesize: "…">
         color: colorTouched ? sampleColor.value : nextAutoColor(),
         count: 0
     };
@@ -1291,6 +1415,7 @@ sampleBtn.addEventListener("click", sampleText);
 createCheatButtons();
 renderCustomWords();
 renderSampleLegend();
+ownColor.value = ownSample.color;
 previewAutoColor();
 renderPoem();
 
