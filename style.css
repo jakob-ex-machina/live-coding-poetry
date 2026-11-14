@@ -4,7 +4,6 @@
    Aufbau dieser Datei:
     1. Variablen (Farbpalette nach der US-Flagge, Schriften, Bevel-Schatten)
     2. Grundlagen
-    2b. Hintergrund-GIF (Seitenhintergrund)
     3. Seitenrahmen (füllt genau die Fensterhöhe, kein Seiten-Scrollen)
     4. Kopfbereich
     5. Fenster mit Bevel-Rahmen
@@ -30,8 +29,7 @@
   --flag-blue:       #3c3b6e;   /* Dunkelblau */
   --flag-white:      #ffffff;   /* Weiß */
 
-  /* Hintergrund der gesamten Seite: dunkelgrau, plain
-     (wird durch das Hintergrund-GIF in Abschnitt 2b überlagert) */
+  /* Hintergrund der gesamten Seite: dunkelgrau, plain */
   --page-bg:     #1a1a1e;
 
   /* "Fenster"-Farbe für die Container (silberner Bevel) */
@@ -90,20 +88,7 @@ body {
   white-space: nowrap;
 }
 
-/* ---------- 2b. Hintergrund-GIF ---------- */
-/* Hier das gewünschte GIF eintragen. Der Pfad ist relativ zur CSS-Datei
-   (wie in der Vorlage: "Bilder/rot-2.gif"). Das GIF liegt auf dem body
-   hinter allen Elementen; die Fenster (.window) behalten ihre eigene
-   deckende Hintergrundfarbe (var(--face)), sodass das GIF nur zwischen
-   den Fenstern, am Seitenrand und hinter Statusleiste/Footer sichtbar ist. */
-body {
-  background-image: url("Bilder/rot-2.gif");
-  background-size: cover;
-  background-repeat: repeat;
-  background-attachment: fixed;
-}
-
-/* Pinke Textmarkierung (wie in der Vorlage) */
+/* Pinke Textmarkierung */
 ::selection {
   background-color: #FF1166;
   color: black;
@@ -112,6 +97,8 @@ body {
   background-color: #FF1166;
   color: black;
 }
+
+
 
 /* ---------- 3. Seitenrahmen ---------- */
 /* Die Seite ist genau so hoch wie das Browserfenster. Die Fenster
@@ -151,14 +138,19 @@ body {
 /* ---------- 5. Fenster mit Bevel-Rahmen ---------- */
 /* Fenster sind Flex-Spalten, die die Höhe ihrer Grid-Zelle ausfüllen.
    min-width/min-height: 0 sorgt dafür, dass Inhalt die Fenstergröße nie
-   verändert – die Fenster sind fest, stattdessen scrollt der Inhalt.
-   Hintergrund bleibt var(--face) (deckend), damit das GIF nicht durchscheint. */
+   verändert – die Fenster sind fest, stattdessen scrollt der Inhalt. */
 .window {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--face);
+
+  background-color: var(--face);
+  background-image: url("Bilder/rostrot.gif");
+  background-size: cover;
+  background-repeat: repeat;
+  background-attachment: fixed;
+
   border: 1px solid #000;
   padding: 3px;
   box-shadow: var(--raised), 5px 5px 0 rgba(0, 0, 0, 0.4);
@@ -172,6 +164,7 @@ body {
   min-height: 0;
   gap: 0.6rem;
   padding: 0.6rem;
+   background: transparent;
 }
 
 /* ---------- 6. Klobige Buttons ---------- */
