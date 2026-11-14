@@ -230,7 +230,7 @@ body {
 
 .btn-small { font-size: 0.7rem; padding: 0.4em 0.8em; }
 
-.toolbar { flex: 0 0 auto; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.toolbar { flex: 0 0 auto; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
 
 /* ---------- 7. Eingabe links ---------- */
 /* Das Textfeld füllt die Resthöhe des Fensters. Zeilen werden umbrochen
@@ -297,6 +297,15 @@ body {
   white-space: nowrap;
 }
 
+/* Trenner zwischen den Baustein-Kategorien (kostet keine zusätzliche Zeile) */
+.cheat-sep {
+  align-self: stretch;
+  width: 2px;
+  margin: 0 0.25rem;
+  background: var(--face-shadow);
+  box-shadow: 1px 0 0 var(--face-light);
+}
+
 .cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
 .cheat-btn:active {
   box-shadow: var(--sunken);
@@ -304,7 +313,7 @@ body {
 }
 
 /* ---------- 7c. Eigene Wörter ---------- */
-.word-form { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.word-form { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: stretch; }
 
 .text-input {
   flex: 1 1 110px;
@@ -530,7 +539,8 @@ body {
   font-weight: 700;
 }
 
-/* Sample-Wörter: eigene Farbe (--sample-color, pro Sample gesetzt),
+/* Sample-Wörter UND eigene Wörter: eigene Farbe (--sample-color, pro Sample
+   bzw. für die eigenen Wörter gesetzt),
    fett + Unterstreichung + leichter Schein – damit klar von normalen
    Wörtern (weiß), Operatoren (pink) und dem roten Signal unterscheidbar.
    Bleibt auch bei "held" in der Sample-Farbe (dann mit Rahmen). */
