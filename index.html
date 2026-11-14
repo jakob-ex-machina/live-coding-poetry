@@ -12,52 +12,9 @@
 
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
-
-  <style>
-    /* ============================================================
-       HINTERGRUND-GIF
-       Hier das gewünschte GIF eintragen. Der Pfad ist relativ zur
-       HTML-Datei (wie in der Vorlage: "Bilder/rot-2.gif").
-       ============================================================ */
-    body {
-      background-image: url("Bilder/rot-2.gif");
-      background-size: cover;
-      background-repeat: repeat;
-      background-attachment: fixed;
-    }
-
-    /* Damit das GIF nicht durch die Fenster scheint, bekommen die
-       Eingabe-/Ausgabefenster einen deckenden Hintergrund.
-       Ggf. an das Design in style.css anpassen. */
-    .window {
-      background-color: #ffffff; /* deckender Hintergrund */
-    }
-
-    /* Textmarkierung in Pink (wie in der Vorlage) */
-    ::selection {
-      background-color: #FF1166;
-      color: black;
-    }
-    ::-moz-selection {
-      background-color: #FF1166;
-      color: black;
-    }
-
-    /* Überschrift "LIVE CODING POETRY" im Stil der Vorlage-Überschrift "LINKS" */
-    .site-title a {
-      text-decoration: none !important;
-      color: black;
-      font-family: Verdana;
-      font-weight: bold;
-    }
-    .site-title a:hover {
-      text-decoration: underline;
-      color: white;
-    }
-  </style>
 </head>
-<body>
-  <!--
+<body>	
+	 <!--
     Seitenaufbau (von oben nach unten). Auf einem PC-Bildschirm füllt die
     Seite genau die Fensterhöhe aus – gescrollt wird nur INNERHALB von
     Eingabe und Ausgabe (und nur vertikal), nie die ganze Seite.
@@ -70,7 +27,7 @@
 
     <!-- ===== 1. Kopfbereich ===== -->
     <header class="site-header">
-      <h1 class="site-title"><a href="https://jakob-buurman.de/live-coding-poetry/">LIVE CODING POETRY</a></h1>
+      <h1 class="site-title">LIVE CODING POETRY</h1>
     </header>
 
     <!-- ===== 2. Fenster ===== -->
@@ -129,6 +86,7 @@
         </div>
       </section>
     </main>
+	  
 
     <!-- ===== 3. Statusleiste: direkt unter den Fenstern ===== -->
     <div class="statusbar">
@@ -137,7 +95,7 @@
     </div>
 
     <!-- ===== 4. Footer: unterstes Element der Seite ===== -->
-    <footer class="site-footer">
+     <footer class="site-footer">
       <p>
         KONZEPT VON <a href="https://jakob-buurman.de/">JAKOB BUURMAN</a>
         · CODING-UMSETZUNG UNTER VERWENDUNG VON KI
