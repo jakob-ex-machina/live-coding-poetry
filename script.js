@@ -5,7 +5,7 @@
 
    Die Sprache besteht aus diesen Bausteinen:
 
-     <shuffle-words>                  ein Zufallswort, das sich regelmäßig ändert
+     <shuffle-word>                  ein Zufallswort, das sich regelmäßig ändert
      <br>                             Zeilenumbruch
      <equality-operator: "==">        Operatoren (werden als Wort ausgegeben,
      <comparison-operator: ">"> ...   z. B. "==" → "wie", ">" → "größer als")
@@ -130,7 +130,7 @@ const OPERATOR_RULES = OPERATORS.map(op => ({
 */
 const BUILDING_BLOCKS = [
     {
-        text: "<shuffle-words>",
+        text: "<shuffle-word>",
         hint: "EIN ZUFALLSWORT, DAS SICH REGELMÄSSIG ÄNDERT"
     },
     {
@@ -366,7 +366,7 @@ function parseCode(code) {
         const tag = raw.toLowerCase();
 
         // --- Zufallswort ---
-        if (tag === "<shuffle-words>") {
+        if (tag === "<shuffle-word>") {
             tokens.push({ type: "word", seconds: currentSeconds() });
             continue;
         }
@@ -425,7 +425,7 @@ function parseCode(code) {
    ===================================================================== */
 
 /*
-  Jedes <shuffle-words> im Code entspricht einem "Slot" (Reihenfolge im
+  Jedes <shuffle-word> im Code entspricht einem "Slot" (Reihenfolge im
   Code = Index im Array). Slots bleiben beim Tippen erhalten – so
   behalten Wörter ihren Zustand (aktuelles Wort, "held"), auch wenn die
   Ausgabe bei jeder Eingabe neu aufgebaut wird.
@@ -595,7 +595,8 @@ function renderPoem() {
     }
 
     // Scrollposition merken, damit das Neuaufbauen sie nicht verändert
-    const { scrollTop, scrollLeft } = output;
+    // (die Ausgabe scrollt nur vertikal)
+    const scrollTop = output.scrollTop;
 
     const now = performance.now();
     const fragment = document.createDocumentFragment();
@@ -666,7 +667,6 @@ function renderPoem() {
     output.replaceChildren(fragment);
 
     output.scrollTop = scrollTop;
-    output.scrollLeft = scrollLeft;
 
 }
 
