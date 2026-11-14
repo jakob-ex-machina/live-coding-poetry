@@ -79,7 +79,7 @@ body {
   /* Ganz hinten: GIF als Seitenhintergrund (wie auf der LINKS-Seite).
      --page-bg bleibt als Fallback, falls das GIF nicht lädt. */
   background-color: var(--page-bg);
-  background-image: url("Bilder/rostrot.gif");
+  background-image: url("Bilder/schwarz.gif");
   background-size: cover;
   background-repeat: repeat;
   background-attachment: fixed;
