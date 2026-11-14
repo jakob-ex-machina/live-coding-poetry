@@ -5,39 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LIVE CODING POETRY</title>
 
+  <!-- Schrift: nur noch Sometype Mono (die Ausgabe nutzt jetzt dieselbe Schrift wie die ganze Seite) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kawi:wght@400;700&family=Sometype+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sometype+Mono:wght@400;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
 </head>
 <body>
+  <!--
+    Seitenaufbau (von oben nach unten):
+    1. Überschrift
+    2. Eingabe- und Ausgabefenster (nebeneinander)
+    3. Statusleiste (schließt direkt an die Fenster an)
+    4. Footer (unterstes Element der Seite)
+  -->
   <div class="page">
 
-    <!-- ===== Kopfbereich: zentrierte Überschrift, plain ===== -->
+    <!-- ===== 1. Kopfbereich ===== -->
     <header class="site-header">
       <h1 class="site-title">LIVE CODING POETRY</h1>
     </header>
 
+    <!-- ===== 2. Fenster ===== -->
     <main class="layout">
 
       <!-- LINKS: Eingabe -->
       <section class="window" aria-label="Eingabe">
         <div class="window-body">
           <label for="code-input" class="visually-hidden">Live-Coding-Eingabe</label>
-          <textarea id="code-input" class="code-input" spellcheck="false" autocomplete="off"
+
+          <!--
+            wrap="off": Zeilen werden nie umbrochen, stattdessen erscheint
+            ein horizontaler Scroller (zusammen mit dem vertikalen).
+          -->
+          <textarea id="code-input" class="code-input scroller" wrap="off"
+                    spellcheck="false" autocomplete="off"
                     autocapitalize="off" autocorrect="off"
-                    placeholder="<shuffle-words><equality-operator: &quot;==&quot;><shuffle-words>"></textarea>
+                    placeholder="&lt;shuffle-words&gt; &lt;equality-operator: &quot;==&quot;&gt; &lt;shuffle-words&gt;"></textarea>
 
           <div class="toolbar">
             <button type="button" id="clear-btn" class="btn">EINGABE LEEREN</button>
           </div>
 
-          <!-- Cheat Sheet als Button-Grid unter dem Code-Input -->
+          <!-- Bausteine: werden per JavaScript erzeugt -->
           <fieldset class="groupbox">
             <legend>BAUSTEINE – KLICKEN ZUM EINFÜGEN</legend>
             <div id="cheat-buttons" class="cheat-buttons"></div>
+            <p class="hint">
+              TIPP: CODE MARKIEREN UND DANN DEN SHUFFLE-TIME-BAUSTEIN KLICKEN – DIE ZEIT GILT
+              DANN NUR FÜR DIE AUSWAHL. OHNE SCHLIESSENDEN BAUSTEIN GILT SIE BIS ZUM ENDE.
+            </p>
           </fieldset>
 
           <!-- Eigene Wörter -->
@@ -59,10 +78,10 @@
         </div>
       </section>
 
-      <!-- RECHTS: Ausgabe -->
+      <!-- RECHTS: Ausgabe (scrollt vertikal und horizontal) -->
       <section class="window" aria-label="Gedicht">
         <div class="window-body">
-          <div id="output" class="output" aria-label="Gerenderte Ausgabe"></div>
+          <div id="output" class="output scroller" aria-label="Gerenderte Ausgabe"></div>
 
           <div class="toolbar">
             <button type="button" id="copy-btn" class="btn">AUSGABE KOPIEREN</button>
@@ -71,24 +90,21 @@
       </section>
     </main>
 
-    <!-- ===== Footer ===== -->
-    <footer class="site-footer">
-      <p>
-        <a href="https://jakob-buurman.de/impressum">IMPRESSUM</a>
-        <span class="dot">·</span>
-        ERSTELLT UNTER BENUTZUNG VON CLAUDE
-        <span class="dot">·</span>
-        WORTDATENBANK:
-        <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0),
-        <a href="https://github.com/PenTestical/german_names">GERMAN_NAMES</a>
-      </p>
-    </footer>
-
-    <!-- ===== Statusleiste ===== -->
+    <!-- ===== 3. Statusleiste: direkt unter den Fenstern ===== -->
     <div class="statusbar">
       <div id="status-text" class="status-field" role="status">LADE WORTLISTE …</div>
       <div id="loader" class="loader" role="progressbar" aria-label="Wortliste wird geladen"></div>
     </div>
+
+    <!-- ===== 4. Footer: unterstes Element der Seite ===== -->
+    <footer class="site-footer">
+      <p>KONZEPT VON JAKOB BUURMAN · CODING-UMSETZUNG UNTER VERWENDUNG VON KI</p>
+      <p>
+        WORTDATENBANK:
+        <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0)
+      </p>
+      <p><a href="https://jakob-buurman.de/impressum">IMPRESSUM</a></p>
+    </footer>
 
   </div>
 </body>
