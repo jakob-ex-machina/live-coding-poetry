@@ -13,8 +13,8 @@
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
 </head>
-<body>	
-	 <!--
+<body>
+  <!--
     Seitenaufbau (von oben nach unten). Auf einem PC-Bildschirm füllt die
     Seite genau die Fensterhöhe aus – gescrollt wird nur INNERHALB von
     Eingabe und Ausgabe (und nur vertikal), nie die ganze Seite.
@@ -57,20 +57,48 @@
             <div id="cheat-buttons" class="cheat-buttons"></div>
           </fieldset>
 
-          <!-- Eigene Wörter: Formular und Zurücksetzen in einer Zeile (spart Höhe) -->
+          <!-- Eigene Wörter: einzeln oder als Bulk (Semikolon), Modus "nur eigene Wörter" -->
           <fieldset class="groupbox">
             <legend>EIGENE WÖRTER</legend>
 
             <form id="word-form" class="word-form" autocomplete="off">
-              <input type="text" id="word-input" class="text-input" maxlength="60"
-                     placeholder="NEUES WORT …" aria-label="Neues Wort">
-              <button type="submit" class="btn btn-small">WORT HINZUFÜGEN</button>
-              <button type="button" id="reset-words-btn" class="btn btn-small">EIGENE WÖRTER ZURÜCKSETZEN</button>
+              <input type="text" id="word-input" class="text-input" maxlength="2000"
+                     placeholder="WORT ODER MEHRERE MIT „;“ TRENNEN …" aria-label="Neue Wörter (mehrere mit Semikolon trennen)">
+              <button type="submit" class="btn btn-small">HINZUFÜGEN</button>
+              <button type="button" id="reset-words-btn" class="btn btn-small">ZURÜCKSETZEN</button>
             </form>
+
+            <!-- Ohne Wortliste arbeiten: nur eigene Wörter (und Samples) im Pool -->
+            <label class="check-row">
+              <input type="checkbox" id="only-custom">
+              NUR EIGENE WÖRTER (OHNE WORTLISTE)
+            </label>
 
             <p id="word-feedback" class="feedback" aria-live="polite"></p>
 
             <ul id="chip-list" class="chip-list scroller" aria-label="Bisher hinzugefügte Wörter"></ul>
+          </fieldset>
+
+          <!-- Sampling: Fremdtext einspeisen -->
+          <fieldset class="groupbox">
+            <legend>SAMPLE – NUR GEMEINFREIE ODER EIGENE TEXTE VERWENDEN</legend>
+
+            <label for="sample-input" class="visually-hidden">Fremdtext einfügen</label>
+            <textarea id="sample-input" class="sample-input scroller" rows="2"
+                      spellcheck="false" autocomplete="off"
+                      placeholder="FREMDTEXT EINFÜGEN (Z. B. EIN GEDICHT) …"></textarea>
+
+            <div class="sample-row">
+              <input type="text" id="sample-source" class="text-input" maxlength="40"
+                     placeholder="FREMDTEXT" aria-label="Titel des Samples">
+              <input type="color" id="sample-color" class="color-input" value="#33ccff"
+                     title="MARKIERUNGSFARBE (UNVERÄNDERT = AUTOMATISCH)" aria-label="Markierungsfarbe">
+              <button type="button" id="sample-btn" class="btn btn-small">SAMPLEN</button>
+            </div>
+
+            <p id="sample-feedback" class="feedback" aria-live="polite"></p>
+
+            <ul id="sample-legend" class="chip-list sample-legend scroller" aria-label="Aktive Samples"></ul>
           </fieldset>
         </div>
       </section>
@@ -86,7 +114,6 @@
         </div>
       </section>
     </main>
-	  
 
     <!-- ===== 3. Statusleiste: direkt unter den Fenstern ===== -->
     <div class="statusbar">
@@ -95,7 +122,7 @@
     </div>
 
     <!-- ===== 4. Footer: unterstes Element der Seite ===== -->
-     <footer class="site-footer">
+    <footer class="site-footer">
       <p>
         KONZEPT VON <a href="https://jakob-buurman.de/">JAKOB BUURMAN</a>
         · CODING-UMSETZUNG UNTER VERWENDUNG VON KI
