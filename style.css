@@ -8,8 +8,8 @@
     4. Kopfbereich
     5. Fenster mit Bevel-Rahmen
     6. Buttons
-    7. Eingabe links (Textfeld, Bausteine, eigene Wörter)
-    8. Ausgabe rechts (schwarz, weiße Wörter, blaue Operatoren, rotes Signal)
+    7. Eingabe links (Textfeld, Bausteine, eigene Wörter, Sample)
+    8. Ausgabe rechts (schwarz, weiße Wörter, pinke Operatoren, rotes Signal)
     9. Scroller (nur vertikal, einheitlich)
    10. Statusleiste + Ladebalken
    11. Footer
@@ -18,7 +18,7 @@
 
    Regeln:
    - Der gesamte Text der Seite ist in GROSSBUCHSTABEN.
-   - Ausnahme: das Code-Eingabefeld und die Bausteine (alles klein).
+   - Ausnahme: das Code-Eingabefeld, die Bausteine und das Sample-Feld.
    ===================================================================== */
 
 /* ---------- 1. Variablen ---------- */
@@ -28,6 +28,9 @@
   --flag-red-light:  #e05a68;   /* helleres Rot für Hover/Fehler auf dunklem Grund */
   --flag-blue:       #3c3b6e;   /* Dunkelblau */
   --flag-white:      #ffffff;   /* Weiß */
+
+  /* Pink: identisch mit der Textmarkierung (::selection) */
+  --pink:            rgb(255, 17, 102);
 
   /* Hintergrund der gesamten Seite: dunkelgrau, plain */
   --page-bg:     #1a1a1e;
@@ -46,10 +49,8 @@
   /* Ausgabe: schwarz, normale Wörter weiß */
   --crt-bg:        #000000;
   --crt-text:      var(--flag-white);
-  /* Operatoren: dunkelblau. Dunkelblau auf Schwarz wäre nicht lesbar,
-     deshalb stehen die Operatoren auf einer weißen Fläche. */
-  --crt-op:        var(--flag-blue);
-  --crt-op-bg:     var(--flag-white);
+  /* Operatoren: pink, ohne Hinterlegung */
+  --crt-op:        var(--pink);
   /* Signal "gleich wechselt das Wort" und "held": rot */
   --crt-signal:    var(--flag-red);
 
@@ -117,7 +118,7 @@ body {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  min-height: 620px;
+  min-height: 780px;
   max-width: 1400px;
   margin: 0 auto;
   padding: 0.75rem 1rem;
@@ -190,7 +191,7 @@ body {
   min-height: 0;
   gap: 0.6rem;
   padding: 0.6rem;
-   background: transparent;
+  background: transparent;
 }
 
 /* ---------- 6. Klobige Buttons ---------- */
@@ -262,11 +263,11 @@ body {
   flex: 0 0 auto;
   margin: 0;
   min-width: 0;
-  padding: 0.5rem 0.7rem 0.6rem;
+  padding: 0.4rem 0.7rem 0.5rem;
   border: 2px groove #fff;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .groupbox legend {
@@ -316,10 +317,22 @@ body {
   text-transform: uppercase;   /* auch die Eingabe in diesem Feld in Großbuchstaben */
 }
 
+/* Checkbox "nur eigene Wörter" */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.72rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.check-row input { margin: 0; accent-color: var(--flag-blue); cursor: pointer; }
+
 .feedback { margin: 0; min-height: 1.1em; font-size: 0.75rem; }
 .feedback.is-error { color: var(--flag-red); font-weight: bold; }
 
-/* Chip-Liste: begrenzte Höhe, bei vielen Wörtern vertikaler Scroller */
+/* Chip-Liste: begrenzte Höhe, bei vielen Wörtern vertikaler Scroller.
+   Zusätzlich zeigt das Script nur die ersten Wörter an (+ "WEITERE"-Chip). */
 .chip-list {
   list-style: none;
   margin: 0;
@@ -327,7 +340,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  max-height: 3.6rem;
+  max-height: 2.9rem;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -351,6 +364,13 @@ body {
   box-shadow: var(--raised);
 }
 
+/* "+ N WEITERE": Hinweis, wenn nicht alle Wörter angezeigt werden */
+.chip-more {
+  padding: 0.1em 0.6em;
+  font-style: italic;
+  background: var(--face);
+}
+
 .chip-remove {
   width: 1.4em; height: 1.4em;
   padding: 0;
@@ -365,6 +385,46 @@ body {
 }
 
 .chip-remove:active { box-shadow: var(--sunken); }
+
+/* ---------- 7d. Sample (Fremdtext) ---------- */
+.sample-input {
+  display: block;
+  width: 100%;
+  min-height: 2.8rem;
+  max-height: 4.2rem;
+  padding: 0.4em 0.6em;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font: 0.8rem/1.4 var(--font-ui);
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+  text-transform: none;        /* Fremdtext so zeigen, wie er eingefügt wurde */
+}
+
+.sample-row { display: flex; gap: 0.4rem; align-items: stretch; }
+.sample-row .text-input { flex: 1 1 100px; }
+
+.color-input {
+  flex: 0 0 2.6rem;
+  width: 2.6rem;
+  padding: 1px;
+  background: var(--face);
+  border: 1px solid #000;
+  box-shadow: var(--raised);
+  cursor: pointer;
+}
+
+/* Legende der aktiven Samples (Farbfeld + Titel + Anzahl + Entfernen) */
+.sample-legend:empty::before { content: "NOCH KEINE SAMPLES"; }
+.sample-legend { max-height: 2.2rem; }
+
+.swatch {
+  width: 0.85em; height: 0.85em;
+  border: 1px solid #000;
+  flex: 0 0 auto;
+}
 
 /* ---------- 8. Ausgabe rechts ---------- */
 /* Schwarzer Hintergrund, Schrift wie die restliche Seite. Das Feld füllt
@@ -415,13 +475,11 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Operatoren: dunkelblaue Schrift auf weißer Fläche, für alle gleich */
+/* Operatoren: pinke Schrift (wie die Textmarkierung), keine Hinterlegung */
 .operator {
-  padding: 0 0.45em;
   white-space: nowrap;
   font-weight: 700;
   color: var(--crt-op);
-  background: var(--crt-op-bg);
 }
 
 /* Unbekannte oder falsch verwendete Bausteine */
@@ -452,11 +510,13 @@ body {
 }
 
 /* Optisches Signal: Das Wort wird gleich gewechselt
-   (rot + Pulsieren in der letzten Phase des Zyklus) */
+   (Pulsieren in der letzten Phase des Zyklus; normale Wörter zusätzlich rot) */
 .shuffle.is-warning .shuffle-word {
+  animation: word-warn 0.6s ease-in-out infinite;
+}
+.shuffle.is-warning:not(.is-sample) .shuffle-word {
   color: var(--crt-signal);
   font-weight: 700;
-  animation: word-warn 0.6s ease-in-out infinite;
 }
 
 @keyframes word-warn {
@@ -465,9 +525,26 @@ body {
 }
 
 /* Gehaltenes Wort ("held"): dauerhaft rot, ohne Pulsieren */
-.shuffle.is-held .shuffle-word {
+.shuffle.is-held:not(.is-sample) .shuffle-word {
   color: var(--crt-signal);
   font-weight: 700;
+}
+
+/* Sample-Wörter: eigene Farbe (--sample-color, pro Sample gesetzt),
+   fett + Unterstreichung + leichter Schein – damit klar von normalen
+   Wörtern (weiß), Operatoren (pink) und dem roten Signal unterscheidbar.
+   Bleibt auch bei "held" in der Sample-Farbe (dann mit Rahmen). */
+.shuffle.is-sample .shuffle-word {
+  color: var(--sample-color);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  text-shadow: 0 0 8px var(--sample-color);
+}
+.shuffle.is-sample.is-held .shuffle-word {
+  outline: 1px solid var(--sample-color);
+  outline-offset: 3px;
 }
 
 .hold-btn {
@@ -568,7 +645,8 @@ body {
   text-decoration: underline;
 }
 
-.site-footer a:hover { color: var(--flag-red-light); }
+/* Hover: schwarz – wie bei der Überschrift */
+.site-footer a:hover { color: #000; }
 
 /* ---------- 12. Layout ---------- */
 /* Feste Spaltenbreiten im Verhältnis 5 : 6 (Ausgabe etwas breiter, damit
