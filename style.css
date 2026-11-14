@@ -76,7 +76,13 @@ body {
   margin: 0;
   font-family: var(--font-ui);
   color: #111;
-  background: var(--page-bg);
+  /* Ganz hinten: GIF als Seitenhintergrund (wie auf der LINKS-Seite).
+     --page-bg bleibt als Fallback, falls das GIF nicht lädt. */
+  background-color: var(--page-bg);
+  background-image: url("Bilder/rostrot.gif");
+  background-size: cover;
+  background-repeat: repeat;
+  background-attachment: fixed;
   text-transform: uppercase;    /* ALLES in Großbuchstaben */
 }
 
@@ -124,15 +130,39 @@ body {
   margin-bottom: 0.75rem;
 }
 
+/* Überschrift wie auf der LINKS-Seite: Verdana, zentriert, Hyperlink in
+   fettem Schwarz ohne Unterstreichung, beim Hover weiß. */
 .site-title {
   margin: 0;
-  font-family: var(--font-ui);
+  font-family: Verdana, sans-serif;
   font-size: clamp(1.4rem, 3vw, 2rem);
-  font-weight: 700;
-  letter-spacing: 0.06em;
   line-height: 1.1;
-  color: #ffffff;
-  text-shadow: none;
+  text-align: center;
+}
+
+.site-title a:link,
+.site-title a:visited,
+.site-title a:active {
+  color: #000;
+  font-family: Verdana, sans-serif;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.site-title a:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Smartphones: wie auf der LINKS-Seite in Sometype Mono */
+@media (max-width: 767px) {
+  .site-title,
+  .site-title a:link,
+  .site-title a:visited,
+  .site-title a:active,
+  .site-title a:hover {
+    font-family: 'Sometype Mono', monospace;
+  }
 }
 
 /* ---------- 5. Fenster mit Bevel-Rahmen ---------- */
@@ -145,11 +175,7 @@ body {
   min-width: 0;
   min-height: 0;
 
-  background-color: var(--face);
-  background-image: url("Bilder/rostrot.gif");
-  background-size: cover;
-  background-repeat: repeat;
-  background-attachment: fixed;
+  background: var(--face);
 
   border: 1px solid #000;
   padding: 3px;
