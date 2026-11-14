@@ -130,8 +130,8 @@ body {
   margin-bottom: 0.75rem;
 }
 
-/* Überschrift wie auf der LINKS-Seite: Verdana, zentriert, Hyperlink in
-   fettem Schwarz ohne Unterstreichung, beim Hover weiß. */
+/* Überschrift: im Normalfall weiß, beim Hover schwarz.
+   Keine Unterstreichung, fett, zentriert. */
 .site-title {
   margin: 0;
   font-family: Verdana, sans-serif;
@@ -143,14 +143,14 @@ body {
 .site-title a:link,
 .site-title a:visited,
 .site-title a:active {
-  color: #000;
+  color: #fff;
   font-family: Verdana, sans-serif;
   font-weight: bold;
   text-decoration: none;
 }
 
 .site-title a:hover {
-  color: #fff;
+  color: #000;
   text-decoration: none;
 }
 
