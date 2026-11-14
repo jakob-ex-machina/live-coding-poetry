@@ -14,6 +14,25 @@
   <script src="./script.js" defer></script>
 
   <style>
+    /* ============================================================
+       HINTERGRUND-GIF
+       Hier das gewünschte GIF eintragen. Der Pfad ist relativ zur
+       HTML-Datei (wie in der Vorlage: "Bilder/rot-2.gif").
+       ============================================================ */
+    body {
+      background-image: url("Bilder/rot-2.gif");
+      background-size: cover;
+      background-repeat: repeat;
+      background-attachment: fixed;
+    }
+
+    /* Damit das GIF nicht durch die Fenster scheint, bekommen die
+       Eingabe-/Ausgabefenster einen deckenden Hintergrund.
+       Ggf. an das Design in style.css anpassen. */
+    .window {
+      background-color: #ffffff; /* deckender Hintergrund */
+    }
+
     /* Textmarkierung in Pink (wie in der Vorlage) */
     ::selection {
       background-color: #FF1166;
