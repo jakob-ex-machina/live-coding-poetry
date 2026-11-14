@@ -12,6 +12,30 @@
 
   <link rel="stylesheet" href="./style.css">
   <script src="./script.js" defer></script>
+
+  <style>
+    /* Textmarkierung in Pink (wie in der Vorlage) */
+    ::selection {
+      background-color: #FF1166;
+      color: black;
+    }
+    ::-moz-selection {
+      background-color: #FF1166;
+      color: black;
+    }
+
+    /* Überschrift "LIVE CODING POETRY" im Stil der Vorlage-Überschrift "LINKS" */
+    .site-title a {
+      text-decoration: none !important;
+      color: black;
+      font-family: Verdana;
+      font-weight: bold;
+    }
+    .site-title a:hover {
+      text-decoration: underline;
+      color: white;
+    }
+  </style>
 </head>
 <body>
   <!--
@@ -27,7 +51,7 @@
 
     <!-- ===== 1. Kopfbereich ===== -->
     <header class="site-header">
-      <h1 class="site-title">LIVE CODING POETRY</h1>
+      <h1 class="site-title"><a href="https://jakob-buurman.de/live-coding-poetry/">LIVE CODING POETRY</a></h1>
     </header>
 
     <!-- ===== 2. Fenster ===== -->
@@ -103,6 +127,7 @@
         WORTDATENBANK:
         <a href="https://github.com/gambolputty/german-nouns">GERMAN-NOUNS</a> (CC-BY-SA 4.0)
       </p>
+      <p><a href="https://jakob-buurman.de/">ZURUECK NACH HAUSE</a></p>
       <p><a href="https://jakob-buurman.de/impressum">IMPRESSUM</a></p>
     </footer>
 
