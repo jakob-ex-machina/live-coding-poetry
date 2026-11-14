@@ -16,6 +16,13 @@
    Alles andere im Eingabefeld ist normaler Text. Zeilenumbrüche und
    Mehrfach-Leerzeichen im Eingabefeld sind nur Formatierung – eine
    Ausgabezeile entsteht ausschließlich durch <br>.
+
+   Zusätze:
+     - "NUR EIGENE WÖRTER": Zufallswörter kommen nur aus eigenen Wörtern
+       (und Samples), die Wortliste wird ignoriert.
+     - Eigene Wörter lassen sich per Semikolon gesammelt hinzufügen.
+     - SAMPLE: Fremdtext wird gegen die Wortdatenbank abgeglichen; Treffer
+       (Singular + Plural) kommen farbig markiert in den Pool.
    ===================================================================== */
 
 
@@ -49,6 +56,24 @@ const EMPTY_WORD = "…";
 const COPY_UPPERCASE = true;
 const COPY_FEEDBACK_MS = 1500;
 
+// Eigene Wörter: maximale Länge eines Worts und maximale Zahl der
+// angezeigten Chips (der Rest wird als "+ N WEITERE" zusammengefasst,
+// damit der Bildschirm bei vielen Wörtern nicht überfüllt wird)
+const MAX_WORD_LENGTH = 60;
+const MAX_CHIPS_SHOWN = 30;
+
+// Sample: Standardtitel, Farbeinstellungen (Golden-Angle-Verfahren)
+const DEFAULT_SAMPLE_SOURCE = "FREMDTEXT";
+const GOLDEN_ANGLE = 137.508;
+const SAMPLE_SATURATION = 85;
+const SAMPLE_LIGHTNESS = 60;
+// Farbtöne (Grad), die Sample-Farben meiden sollen: Pink (Operatoren),
+// Rot ("held"/Signal), Dunkelblau. Weiß/Schwarz sind unbunt und
+// kollidieren wegen der Sättigung ohnehin nicht.
+const RESERVED_HUES = [340, 352, 241];
+const RESERVED_HUE_TOLERANCE = 28;
+const USED_HUE_TOLERANCE = 22;
+
 
 /* =====================================================================
    2. ELEMENTE
@@ -68,9 +93,17 @@ const copyLabel = copyBtn.textContent;   // Originalbeschriftung merken
 const wordForm = document.getElementById("word-form");
 const wordInput = document.getElementById("word-input");
 const wordFeedback = document.getElementById("word-feedback");
+const onlyCustomBox = document.getElementById("only-custom");
 
 const chipList = document.getElementById("chip-list");
 const resetWordsBtn = document.getElementById("reset-words-btn");
+
+const sampleInput = document.getElementById("sample-input");
+const sampleSource = document.getElementById("sample-source");
+const sampleColor = document.getElementById("sample-color");
+const sampleBtn = document.getElementById("sample-btn");
+const sampleFeedback = document.getElementById("sample-feedback");
+const sampleLegend = document.getElementById("sample-legend");
 
 
 /* =====================================================================
@@ -82,6 +115,26 @@ let wordDatabase = [];
 
 // Vom Nutzer hinzugefügte Wörter
 let customWords = [];
+
+// true = Wortliste ignorieren, nur eigene Wörter + Samples verwenden
+let useOnlyCustom = false;
+
+/*
+  Invertierte Lookup-Map (beim Laden gebaut):
+    Form (klein geschrieben) → { lemma, singular, plural }
+  Wird vom Sampling genutzt, um Tokens eines Fremdtexts zu erkennen.
+*/
+const lookup = new Map();
+
+/*
+  Sample-Pool: ein Eintrag pro importiertem Wort
+    { word, sample }  mit  sample = { source, color, count }
+  Die Farbe hängt am Sample-Objekt und damit an jedem seiner Wörter.
+*/
+let sampleEntries = [];
+let samples = [];                      // alle Samples (für Legende + Farbwahl)
+const sampleKeys = new Set();          // kleingeschriebene Wörter im Sample-Pool
+let colorTouched = false;              // hat der Nutzer die Farbe selbst gewählt?
 
 /*
   Operator-Tabelle: Die EINZIGE Stelle, an der Operatoren definiert sind.
@@ -103,6 +156,7 @@ const OPERATORS = [
     { type: "addition-operator",    symbol: "+",  word: "und" },
     { type: "alternative-operator", symbol: "||", word: "oder" },
     { type: "negation-operator",    symbol: "!=", word: "anders als" },
+    { type: "negation-operator",    symbol: "!",  word: "nicht" },
     { type: "sequence-operator",    symbol: ">>", word: "dann" }
 ];
 
@@ -157,12 +211,75 @@ const BUILDING_BLOCKS = [
    4. WORTLISTE LADEN
    ===================================================================== */
 
+// Statusanzeige für die Wortliste (wird von refreshStatus() ausgegeben)
+let dbStatus = { text: "LADE WORTLISTE …", error: false };
+
+/*
+  Statusleiste: zeigt im Modus "nur eigene Wörter" die Größe des
+  eigenen Pools, sonst den Zustand der Wortliste.
+*/
+function refreshStatus() {
+
+    if (useOnlyCustom) {
+        const size = customWords.length + sampleEntries.length;
+        statusText.textContent = `MODUS: NUR EIGENE WÖRTER (${size})`;
+        statusText.classList.remove("is-warning");
+        return;
+    }
+
+    statusText.textContent = dbStatus.text;
+    statusText.classList.toggle("is-warning", dbStatus.error);
+
+}
+
+/*
+  Ein Eintrag der words.json kann sein:
+    - ein String (Wortform)                       → nur diese Form
+    - ein Objekt { lemma, singular, plural, flexion } (german-nouns)
+      → Singular + Plural (+ alle weiteren Formen aus "flexion")
+  Liefert { info, forms } oder null.
+*/
+function normalizeEntry(item) {
+
+    if (typeof item === "string") {
+        const word = item.trim();
+        if (!word) return null;
+        return { info: { lemma: word, singular: word, plural: "" }, forms: [word] };
+    }
+
+    if (item && typeof item === "object") {
+
+        const flexion = item.flexion || {};
+        const lemma = String(item.lemma || "").trim();
+        const singular = String(
+            item.singular || flexion["nominativ singular"] ||
+            flexion["nominativ singular 1"] || lemma
+        ).trim();
+        const plural = String(
+            item.plural || flexion["nominativ plural"] ||
+            flexion["nominativ plural 1"] || ""
+        ).trim();
+
+        const forms = [lemma, singular, plural, ...Object.values(flexion)]
+            .filter(form => typeof form === "string" && form.trim())
+            .map(form => form.trim());
+
+        if (forms.length === 0) return null;
+
+        return { info: { lemma: lemma || singular, singular, plural }, forms };
+
+    }
+
+    return null;
+
+}
+
 async function loadWordList() {
 
     try {
 
-        statusText.textContent = "LADE WORTLISTE …";
-        statusText.classList.remove("is-warning");
+        dbStatus = { text: "LADE WORTLISTE …", error: false };
+        refreshStatus();
         loader.hidden = false;
 
         // words.json liegt im selben Ordner wie die HTML-Datei.
@@ -181,22 +298,39 @@ async function loadWordList() {
             throw new Error("words.json enthält kein gültiges JSON-Array.");
         }
 
-        // Nur Strings, getrimmt, ohne leere Einträge, ohne Duplikate
-        wordDatabase = [
-            ...new Set(
-                data
-                    .filter(word => typeof word === "string")
-                    .map(word => word.trim())
-                    .filter(Boolean)
-            )
-        ];
+        // Pool-Wörter sammeln und gleichzeitig die Lookup-Map bauen
+        const words = [];
+        lookup.clear();
+
+        for (const item of data) {
+
+            const entry = normalizeEntry(item);
+            if (!entry) continue;
+
+            // Pool: Singular und Plural (bei reinen Strings: das Wort selbst)
+            for (const form of [entry.info.singular, entry.info.plural]) {
+                if (form) words.push(form);
+            }
+
+            // Lookup: jede bekannte Form (klein) zeigt auf die Grundinfo
+            for (const form of entry.forms) {
+                const key = form.toLowerCase();
+                if (!lookup.has(key)) lookup.set(key, entry.info);
+            }
+
+        }
+
+        // Ohne Duplikate
+        wordDatabase = [...new Set(words)];
 
         if (wordDatabase.length === 0) {
             throw new Error("Die Wortliste enthält keine Wörter.");
         }
 
-        statusText.textContent =
-            `WORTLISTE GELADEN: ${wordDatabase.length} WÖRTER`;
+        dbStatus = {
+            text: `WORTLISTE GELADEN: ${wordDatabase.length} WÖRTER`,
+            error: false
+        };
 
         // Bereits angezeigte Zufallswörter ohne Wort bekommen jetzt eins
         renderPoem();
@@ -205,12 +339,12 @@ async function loadWordList() {
 
         console.error("WORTLISTEN-FEHLER:", error);
 
-        statusText.textContent = "FEHLER: WORTLISTE NICHT GELADEN";
-        statusText.classList.add("is-warning");
+        dbStatus = { text: "FEHLER: WORTLISTE NICHT GELADEN", error: true };
 
     } finally {
 
         loader.hidden = true;
+        refreshStatus();
 
     }
 
@@ -222,32 +356,41 @@ async function loadWordList() {
    ===================================================================== */
 
 /*
-  Zieht ein Zufallswort aus Wortliste + eigenen Wörtern. Es wird ein
-  gemeinsamer Index über beide Listen gewürfelt (ohne die 150.000+
-  Wörter bei jedem Wechsel zu kopieren). Das vorherige Wort wird – wenn
-  möglich – nicht direkt wiederholt.
+  Zieht ein Zufallswort aus dem Pool: Wortliste (außer im Modus "nur
+  eigene Wörter") + eigene Wörter + Sample-Wörter. Es wird ein gemeinsamer
+  Index über alle Teile gewürfelt (ohne die 150.000+ Wörter bei jedem
+  Wechsel zu kopieren). Das vorherige Wort wird – wenn möglich – nicht
+  direkt wiederholt.
+
+  Rückgabe: { word, sample }  (sample = null bei normalen Wörtern)
 */
-function pickWord(previous = "") {
+function pickEntry(previous = "") {
 
-    const total = wordDatabase.length + customWords.length;
+    const dbSize = useOnlyCustom ? 0 : wordDatabase.length;
+    const total = dbSize + customWords.length + sampleEntries.length;
 
-    if (total === 0) return "";
+    if (total === 0) return { word: "", sample: null };
 
-    let word = "";
+    let entry = { word: "", sample: null };
 
     for (let attempt = 0; attempt < 5; attempt++) {
 
-        const index = Math.floor(Math.random() * total);
+        let index = Math.floor(Math.random() * total);
 
-        word = index < wordDatabase.length
-            ? wordDatabase[index]
-            : customWords[index - wordDatabase.length];
+        if (index < dbSize) {
+            entry = { word: wordDatabase[index], sample: null };
+        } else if ((index -= dbSize) < customWords.length) {
+            entry = { word: customWords[index], sample: null };
+        } else {
+            const sampled = sampleEntries[index - customWords.length];
+            entry = { word: sampled.word, sample: sampled.sample };
+        }
 
-        if (word !== previous) break;
+        if (entry.word !== previous) break;
 
     }
 
-    return word;
+    return entry;
 
 }
 
@@ -432,6 +575,7 @@ function parseCode(code) {
 
   Slot-Felder:
     word       aktuelles Wort
+    sample     Sample des Worts ({ source, color }) oder null
     held       true = eingefroren
     intervalMs Wechselzeit in Millisekunden
     nextChange Zeitpunkt (performance.now) des nächsten Wechsels
@@ -442,6 +586,7 @@ const slots = [];
 function createSlot() {
     return {
         word: "",
+        sample: null,
         held: false,
         intervalMs: 0,
         nextChange: 0,
@@ -465,14 +610,28 @@ function showWord(slot) {
 
 // Neues Wort ziehen und anzeigen
 function changeWord(slot) {
-    slot.word = pickWord(slot.word);
+    const entry = pickEntry(slot.word);
+    slot.word = entry.word;
+    slot.sample = entry.sample;
     showWord(slot);
+    updateSlotView(slot);
 }
 
-// Hold-Button / Klassen an den Zustand (held oder nicht) anpassen
+// Hold-Button / Klassen an den Zustand (held, Sample) anpassen
 function updateSlotView(slot) {
 
     slot.wrapEl.classList.toggle("is-held", slot.held);
+
+    // Sample-Markierung: Farbe als CSS-Variable, Quelle als Tooltip
+    slot.wrapEl.classList.toggle("is-sample", Boolean(slot.sample));
+
+    if (slot.sample) {
+        slot.wrapEl.style.setProperty("--sample-color", slot.sample.color);
+        slot.wrapEl.title = `SAMPLE: ${slot.sample.source}`;
+    } else {
+        slot.wrapEl.style.removeProperty("--sample-color");
+        slot.wrapEl.removeAttribute("title");
+    }
 
     // Ein gehaltenes Wort zeigt kein Wechsel-Signal
     if (slot.held) {
@@ -647,7 +806,9 @@ function renderPoem() {
 
                 // Noch kein Wort (z. B. Wortliste war noch nicht geladen)
                 if (!slot.word) {
-                    slot.word = pickWord();
+                    const entry = pickEntry();
+                    slot.word = entry.word;
+                    slot.sample = entry.sample;
                 }
 
                 token.slot = slot;
@@ -779,12 +940,14 @@ function setFeedback(message, isError = false) {
     wordFeedback.classList.toggle("is-error", isError);
 }
 
-// Liste der eigenen Wörter als Chips (mit Entfernen-Button) anzeigen
+// Liste der eigenen Wörter als Chips (mit Entfernen-Button) anzeigen.
+// Es werden höchstens MAX_CHIPS_SHOWN Chips gezeigt; der Rest wird als
+// "+ N WEITERE" zusammengefasst, damit der Bildschirm nicht überfüllt ist.
 function renderCustomWords() {
 
     chipList.replaceChildren();
 
-    customWords.forEach((word, index) => {
+    customWords.slice(0, MAX_CHIPS_SHOWN).forEach((word, index) => {
 
         const li = document.createElement("li");
         li.className = "chip";
@@ -801,6 +964,7 @@ function renderCustomWords() {
         removeBtn.addEventListener("click", () => {
             customWords.splice(index, 1);
             renderCustomWords();
+            refreshStatus();
             setFeedback("WORT ENTFERNT.");
         });
 
@@ -809,31 +973,66 @@ function renderCustomWords() {
 
     });
 
+    const hidden = customWords.length - MAX_CHIPS_SHOWN;
+
+    if (hidden > 0) {
+        const more = document.createElement("li");
+        more.className = "chip chip-more";
+        more.textContent = `+ ${hidden} WEITERE`;
+        chipList.appendChild(more);
+    }
+
 }
 
+/*
+  Hinzufügen: ein Wort oder mehrere, getrennt durch Semikolon
+  ("Mond; Stern; Nacht"). Duplikate (Groß-/Kleinschreibung egal)
+  werden übersprungen.
+*/
 wordForm.addEventListener("submit", event => {
 
     event.preventDefault();
 
-    const word = wordInput.value.trim();
+    const parts = wordInput.value
+        .split(";")
+        .map(part => part.trim().slice(0, MAX_WORD_LENGTH))
+        .filter(Boolean);
 
-    if (!word) return;
+    if (parts.length === 0) return;
 
-    // Duplikate (Groß-/Kleinschreibung egal) verhindern
-    const exists = customWords.some(
-        existing => existing.toLowerCase() === word.toLowerCase()
-    );
+    const known = new Set(customWords.map(word => word.toLowerCase()));
+    let added = 0;
+    let skipped = 0;
 
-    if (exists) {
-        setFeedback("DIESES WORT EXISTIERT BEREITS.", true);
+    for (const word of parts) {
+
+        const key = word.toLowerCase();
+
+        if (known.has(key)) {
+            skipped++;
+            continue;
+        }
+
+        known.add(key);
+        customWords.push(word);
+        added++;
+
+    }
+
+    if (added === 0) {
+        setFeedback("DIESE WÖRTER EXISTIEREN BEREITS.", true);
         return;
     }
 
-    customWords.push(word);
     wordInput.value = "";
 
-    setFeedback("WORT HINZUGEFÜGT.");
+    setFeedback(
+        `${added} ${added === 1 ? "WORT" : "WÖRTER"} HINZUGEFÜGT` +
+        (skipped ? `, ${skipped} DUPLIKAT(E) ÜBERSPRUNGEN.` : ".")
+    );
+
     renderCustomWords();
+    refreshStatus();
 
     // Falls noch keine Wörter vorhanden waren, bekommen leere Slots jetzt eins
     renderPoem();
@@ -845,17 +1044,254 @@ resetWordsBtn.addEventListener("click", () => {
     customWords = [];
 
     renderCustomWords();
+    refreshStatus();
     setFeedback("EIGENE WÖRTER ZURÜCKGESETZT.");
+
+});
+
+// Modus "nur eigene Wörter": Wortliste wird im Pool ignoriert
+onlyCustomBox.addEventListener("change", () => {
+
+    useOnlyCustom = onlyCustomBox.checked;
+
+    refreshStatus();
+
+    if (useOnlyCustom && customWords.length + sampleEntries.length === 0) {
+        setFeedback("NOCH KEINE EIGENEN WÖRTER – ZUERST WÖRTER HINZUFÜGEN.", true);
+    } else {
+        setFeedback("");
+    }
+
+    // Leere Slots können jetzt ein Wort bekommen
+    renderPoem();
 
 });
 
 
 /* =====================================================================
-   12. START
+   12. SAMPLE (FREMDTEXT)
+   ===================================================================== */
+
+// ---------- Farben ----------
+
+// HSL → "#rrggbb"
+function hslToHex(h, s, l) {
+
+    s /= 100;
+    l /= 100;
+
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const hex = x => Math.round(255 * x).toString(16).padStart(2, "0");
+
+    return `#${hex(f(0))}${hex(f(8))}${hex(f(4))}`;
+
+}
+
+// "#rrggbb" → Farbton in Grad (NaN bei Grau/Weiß/Schwarz)
+function hexToHue(hex) {
+
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+
+    if (d === 0) return NaN;
+
+    let hue;
+    if (max === r)      hue = ((g - b) / d) % 6;
+    else if (max === g) hue = (b - r) / d + 2;
+    else                hue = (r - g) / d + 4;
+
+    hue *= 60;
+    return hue < 0 ? hue + 360 : hue;
+
+}
+
+// Abstand zweier Farbtöne auf dem Farbkreis (0–180)
+function hueDistance(a, b) {
+    const d = Math.abs(a - b) % 360;
+    return Math.min(d, 360 - d);
+}
+
+const isNear = (hue, list, tolerance) =>
+    list.some(other => !Number.isNaN(other) && hueDistance(hue, other) < tolerance);
+
+/*
+  Nächste automatische Farbe (Golden-Angle-Verfahren): Der Farbton rückt
+  pro Sample um 137,5° weiter. Töne nahe den Grundfarben (Pink, Rot,
+  Dunkelblau) oder nahe bereits verwendeten Sample-Farben werden
+  übersprungen. Die Funktion hat keine Nebenwirkungen (Vorschau möglich).
+*/
+function nextAutoColor() {
+
+    const used = samples.map(sample => hexToHue(sample.color));
+
+    for (let i = 0; i < 80; i++) {
+
+        const hue = ((samples.length + i) * GOLDEN_ANGLE + 20) % 360;
+
+        if (isNear(hue, RESERVED_HUES, RESERVED_HUE_TOLERANCE)) continue;
+        if (isNear(hue, used, USED_HUE_TOLERANCE)) continue;
+
+        return hslToHex(hue, SAMPLE_SATURATION, SAMPLE_LIGHTNESS);
+
+    }
+
+    // Notfall (sehr viele Samples): beliebiger Farbton
+    return hslToHex(Math.random() * 360, SAMPLE_SATURATION, SAMPLE_LIGHTNESS);
+
+}
+
+// Farbfeld zeigt die nächste automatische Farbe, solange der Nutzer nicht wählt
+function previewAutoColor() {
+    colorTouched = false;
+    sampleColor.value = nextAutoColor();
+}
+
+sampleColor.addEventListener("input", () => { colorTouched = true; });
+
+// ---------- Anzeige ----------
+
+function setSampleFeedback(message, isError = false) {
+    sampleFeedback.textContent = message;
+    sampleFeedback.classList.toggle("is-error", isError);
+}
+
+// Legende: Farbfeld + Titel + Anzahl Wörter + Entfernen
+function renderSampleLegend() {
+
+    sampleLegend.replaceChildren();
+
+    for (const sample of samples) {
+
+        const li = document.createElement("li");
+        li.className = "chip";
+
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = sample.color;
+
+        const label = document.createElement("span");
+        label.textContent = `${sample.source} (${sample.count})`;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "chip-remove";
+        removeBtn.textContent = "×";
+        removeBtn.setAttribute("aria-label", `Sample entfernen: ${sample.source}`);
+        removeBtn.addEventListener("click", () => removeSample(sample));
+
+        li.append(swatch, label, removeBtn);
+        sampleLegend.appendChild(li);
+
+    }
+
+}
+
+// Entfernt ein komplettes Sample samt seiner Wörter aus dem Pool
+function removeSample(sample) {
+
+    samples = samples.filter(other => other !== sample);
+    sampleEntries = sampleEntries.filter(entry => entry.sample !== sample);
+
+    sampleKeys.clear();
+    sampleEntries.forEach(entry => sampleKeys.add(entry.word.toLowerCase()));
+
+    renderSampleLegend();
+    if (!colorTouched) previewAutoColor();
+    refreshStatus();
+    setSampleFeedback("SAMPLE ENTFERNT.");
+
+}
+
+// ---------- Sampling ----------
+
+/*
+  1. Text in Wörter zerlegen (alles außer Buchstaben ist Trenner:
+     Leerzeichen, Satzzeichen, Zeilenumbrüche; Groß-/Kleinschreibung egal)
+  2. Jedes Token in der Lookup-Map suchen, Nicht-Treffer verwerfen
+  3. Singular und Plural der Treffer in den Sample-Pool legen
+     (nicht, wenn schon im Sample-Pool), mit Titel und Farbe des Samples
+*/
+function sampleText() {
+
+    if (lookup.size === 0) {
+        setSampleFeedback("WORTLISTE NOCH NICHT GELADEN.", true);
+        return;
+    }
+
+    const tokens = [...new Set(sampleInput.value.toLowerCase().match(/\p{L}+/gu) || [])];
+
+    if (tokens.length === 0) {
+        setSampleFeedback("BITTE ZUERST EINEN TEXT EINFÜGEN.", true);
+        return;
+    }
+
+    const sample = {
+        source: sampleSource.value.trim() || DEFAULT_SAMPLE_SOURCE,
+        color: colorTouched ? sampleColor.value : nextAutoColor(),
+        count: 0
+    };
+
+    const hits = new Set();
+
+    for (const token of tokens) {
+
+        const info = lookup.get(token);
+
+        if (!info || hits.has(info)) continue;
+        hits.add(info);
+
+        for (const form of [info.singular, info.plural]) {
+
+            if (!form) continue;
+
+            const key = form.toLowerCase();
+            if (sampleKeys.has(key)) continue;
+
+            sampleKeys.add(key);
+            sampleEntries.push({ word: form, sample });
+            sample.count++;
+
+        }
+
+    }
+
+    if (sample.count === 0) {
+        setSampleFeedback("KEINE NEUEN TREFFER IN DER WORTDATENBANK.", true);
+        return;
+    }
+
+    samples.push(sample);
+
+    sampleInput.value = "";
+    setSampleFeedback(
+        `${sample.count} WÖRTER AUS „${sample.source}“ ÜBERNOMMEN ` +
+        `(${hits.size} TREFFER VON ${tokens.length} WÖRTERN).`
+    );
+
+    renderSampleLegend();
+    previewAutoColor();
+    refreshStatus();
+    renderPoem();
+
+}
+
+sampleBtn.addEventListener("click", sampleText);
+
+
+/* =====================================================================
+   13. START
    ===================================================================== */
 
 createCheatButtons();
 renderCustomWords();
+renderSampleLegend();
+previewAutoColor();
 renderPoem();
 
 // Zeitgeber für alle Zufallswörter
