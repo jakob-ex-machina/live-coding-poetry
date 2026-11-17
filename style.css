@@ -2,19 +2,20 @@
    Live Coding Poetry – Y2K / Web-1.0 / Bevel-&-Emboss-Stil
 
    Aufbau dieser Datei:
-    1. Variablen (Farbpalette nach der US-Flagge, Schriften, Bevel-Schatten)
+    1. Variablen (Farbpalette, Schriften, Bevel-Schatten)
     2. Grundlagen
     3. Seitenrahmen (füllt genau die Fensterhöhe, kein Seiten-Scrollen)
     4. Kopfbereich
     5. Fenster mit Bevel-Rahmen
     6. Buttons
-    7. Eingabe links (Textfeld, Bausteine, eigene Wörter, Sample)
-    8. Ausgabe rechts (schwarz, weiße Wörter, pinke Operatoren, rotes Signal)
+    7. Eingabe links (Editor, Code-Farben, Bausteine, eigene Wörter, Sample)
+    8. Ausgabe in der Mitte (schwarz, weiße Wörter, pinke Operatoren, Cursor)
     9. Scroller (nur vertikal, einheitlich)
-   10. Statusleiste + Ladebalken
-   11. Footer
-   12. Layout (feste Spaltenbreiten) + schmale Bildschirme
-   13. Bewegungsreduzierung
+   10. Musik rechts (Pattern, Regler)
+   11. Statusleiste + Ladebalken
+   12. Footer
+   13. Layout (feste Spaltenbreiten) + schmale Bildschirme
+   14. Bewegungsreduzierung
 
    Regeln:
    - Der gesamte Text der Seite ist in GROSSBUCHSTABEN.
@@ -23,14 +24,14 @@
 
 /* ---------- 1. Variablen ---------- */
 :root {
-  /* Farbpalette nach der Flagge der USA ("Old Glory") */
-  --flag-red:        #b22234;   /* Rot  */
-  --flag-red-light:  #e05a68;   /* helleres Rot für Hover/Fehler auf dunklem Grund */
-  --flag-blue:       #3c3b6e;   /* Dunkelblau */
-  --flag-white:      #ffffff;   /* Weiß */
+  /* Grundfarben */
+  --red:        #b22234;
+  --red-light:  #e05a68;   /* helleres Rot für Fehler auf dunklem Grund */
+  --blue:       #3c3b6e;
+  --white:      #ffffff;
 
   /* Pink: identisch mit der Textmarkierung (::selection) */
-  --pink:            rgb(255, 17, 102);
+  --pink:       rgb(255, 17, 102);
 
   /* Hintergrund der gesamten Seite: dunkelgrau, plain */
   --page-bg:     #1a1a1e;
@@ -48,11 +49,17 @@
 
   /* Ausgabe: schwarz, normale Wörter weiß */
   --crt-bg:        #000000;
-  --crt-text:      var(--flag-white);
+  --crt-text:      var(--white);
   /* Operatoren: pink, ohne Hinterlegung */
   --crt-op:        var(--pink);
   /* Signal "gleich wechselt das Wort" und "held": rot */
-  --crt-signal:    var(--flag-red);
+  --crt-signal:    var(--red);
+
+  /* Klammerfarben im Code-Editor (nach Verschachtelungstiefe) */
+  --bracket-0:  #ffd24d;
+  --bracket-1:  #6fdcff;
+  --bracket-2:  #b69cff;
+  --bracket-3:  #7dffa8;
 
   --raised:
     inset 1px 1px 0 var(--face-light),
@@ -77,7 +84,7 @@ body {
   margin: 0;
   font-family: var(--font-ui);
   color: #111;
-  /* Ganz hinten: GIF als Seitenhintergrund (wie auf der LINKS-Seite).
+  /* Ganz hinten: GIF als Seitenhintergrund.
      --page-bg bleibt als Fallback, falls das GIF nicht lädt. */
   background-color: var(--page-bg);
   background-image: url("Bilder/schwarz.gif");
@@ -105,8 +112,6 @@ body {
   color: black;
 }
 
-
-
 /* ---------- 3. Seitenrahmen ---------- */
 /* Die Seite ist genau so hoch wie das Browserfenster. Die Fenster
    (.layout) füllen den Platz zwischen Überschrift und Statusleiste;
@@ -119,7 +124,7 @@ body {
   height: 100vh;
   height: 100dvh;
   min-height: 780px;
-  max-width: 1400px;
+  max-width: 1700px;
   margin: 0 auto;
   padding: 0.75rem 1rem;
 }
@@ -155,7 +160,7 @@ body {
   text-decoration: none;
 }
 
-/* Smartphones: wie auf der LINKS-Seite in Sometype Mono */
+/* Smartphones: Überschrift in Sometype Mono */
 @media (max-width: 767px) {
   .site-title,
   .site-title a:link,
@@ -221,6 +226,7 @@ body {
 .btn:focus-visible,
 .hold-btn:focus-visible,
 .chip-remove:focus-visible,
+.chip-insert:focus-visible,
 .cheat-btn:focus-visible {
   outline: 2px dotted #000;
   outline-offset: 2px;
@@ -233,30 +239,103 @@ body {
 .toolbar { flex: 0 0 auto; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
 
 /* ---------- 7. Eingabe links ---------- */
-/* Das Textfeld füllt die Resthöhe des Fensters. Zeilen werden umbrochen
-   (pre-wrap), es gibt nur einen vertikalen Scroller. */
-.code-input {
-  display: block;
+
+/* Editor: Hervorhebungsschicht (pre) und Textarea liegen exakt übereinander.
+   Beide haben dieselbe Schrift, denselben Abstand, denselben Umbruch und
+   denselben (immer sichtbaren) vertikalen Scroller – nur so bleiben die
+   Zeilenumbrüche in beiden Schichten identisch. */
+.editor {
+  position: relative;
   flex: 1 1 0;
-  width: 100%;
   min-height: 5rem;
-  padding: 0.7rem;
-  resize: none;                  /* Größe ist fest */
-  overflow-x: hidden;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 1rem/1.5 var(--font-mono);
-  color: var(--code-text);
-  caret-color: var(--code-text);
   background: var(--code-bg);
   border: 1px solid #000;
   box-shadow: var(--sunken), inset 0 0 30px rgba(255, 255, 255, 0.04);
+}
+
+.code-highlight,
+.code-input {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.7rem;
+  border: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+  font: 1rem/1.5 var(--font-mono);
+  letter-spacing: normal;
+  word-spacing: normal;
   text-transform: lowercase;     /* Ausnahme: Code-Feld in Kleinbuchstaben */
+}
+
+.code-highlight {
+  color: var(--code-text);
+  pointer-events: none;
+}
+
+.code-input {
+  resize: none;                  /* Größe ist fest */
+  color: transparent;            /* Text zeigt die Hervorhebungsschicht */
+  caret-color: var(--code-text);
+  background: transparent;
 }
 
 .code-input::placeholder { color: #888888; }
 .code-input:focus { outline: 2px solid #000; outline-offset: 1px; }
+
+/* Markierter Text: halbtransparent, damit die Farben darunter sichtbar bleiben */
+.code-input::selection {
+  background: rgba(255, 17, 102, 0.55);
+  color: transparent;
+}
+.code-input::-moz-selection {
+  background: rgba(255, 17, 102, 0.55);
+  color: transparent;
+}
+
+/* --- Code-Farben (Hervorhebungsschicht) --- */
+.hl-bracket { color: #8a8a98; }
+.hl-name    { color: #c8c8d2; }
+.hl-word    { color: #ffffff; }
+.hl-break   { color: #8a8a98; }
+.hl-str     { color: #9be89b; }
+.hl-opsym   { color: var(--pink); }
+.hl-error   {
+  color: var(--red-light);
+  text-decoration: underline wavy var(--red-light);
+  text-underline-offset: 0.2em;
+}
+
+/* Klammerpaare (<shuffle-time> / <shuffle-samplesize>): Farbe nach Tiefe */
+.hl-d0 { color: var(--bracket-0); }
+.hl-d1 { color: var(--bracket-1); }
+.hl-d2 { color: var(--bracket-2); }
+.hl-d3 { color: var(--bracket-3); }
+
+/* Gegenstück des Bausteins, an dem der Cursor steht */
+.hl-hit {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+}
+
+/* Gespiegelter Cursor (zeigt, wo man im Ausgabefeld steht).
+   Rahmen und negative Ränder heben sich auf: keine Verschiebung des Textes. */
+.mirror-caret {
+  border-left: 2px solid var(--pink);
+  margin: 0 -1px;
+  animation: caret-blink 1.1s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% { border-left-color: transparent; }
+}
 
 /* Gruppenrahmen */
 .groupbox {
@@ -326,7 +405,7 @@ body {
   text-transform: uppercase;   /* auch die Eingabe in diesem Feld in Großbuchstaben */
 }
 
-/* Checkbox "nur eigene Wörter" */
+/* Checkbox */
 .check-row {
   display: flex;
   align-items: center;
@@ -335,10 +414,10 @@ body {
   font-weight: bold;
   cursor: pointer;
 }
-.check-row input { margin: 0; accent-color: var(--flag-blue); cursor: pointer; }
+.check-row input { margin: 0; accent-color: var(--blue); cursor: pointer; }
 
 .feedback { margin: 0; min-height: 1.1em; font-size: 0.75rem; }
-.feedback.is-error { color: var(--flag-red); font-weight: bold; }
+.feedback.is-error { color: var(--red); font-weight: bold; }
 
 /* Chip-Liste: begrenzte Höhe, bei vielen Wörtern vertikaler Scroller.
    Zusätzlich zeigt das Script nur die ersten Wörter an (+ "WEITERE"-Chip). */
@@ -367,7 +446,7 @@ body {
   gap: 0.35em;
   padding: 0.1em 0.25em 0.1em 0.6em;
   font-size: 0.8rem;
-  background: var(--flag-white);
+  background: var(--white);
   border: 1px solid #000;
   border-radius: 3px;
   box-shadow: var(--raised);
@@ -394,6 +473,22 @@ body {
 }
 
 .chip-remove:active { box-shadow: var(--sunken); }
+
+/* Klickbarer Teil eines Sample-Chips (fügt den Bereichsbefehl ein) */
+.chip-insert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.chip-insert:hover span:last-child { text-decoration: underline; }
 
 /* ---------- 7d. Sample (Fremdtext) ---------- */
 .sample-input {
@@ -435,12 +530,15 @@ body {
   flex: 0 0 auto;
 }
 
-/* ---------- 8. Ausgabe rechts ---------- */
+/* ---------- 8. Ausgabe in der Mitte ---------- */
 /* Schwarzer Hintergrund, Schrift wie die restliche Seite. Das Feld füllt
    die Resthöhe des Fensters und wächst nie durch seinen Inhalt:
    stattdessen erscheint ein vertikaler Scroller. Zu lange Zeilen
-   werden umbrochen (kein horizontales Scrollen). */
+   werden umbrochen (kein horizontales Scrollen).
+   position: relative – Cursor und Musik-Signal werden darin absolut platziert. */
 .output {
+  position: relative;
+  isolation: isolate;
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
@@ -455,15 +553,46 @@ body {
   border: 1px solid #000;
   box-shadow: var(--sunken);
   text-transform: uppercase;
+  cursor: text;
+}
+
+.output:focus-visible {
+  outline: 1px dotted #ffffff;
+  outline-offset: -4px;
 }
 
 /* Vorschau-Hinweis: wird nur angezeigt, solange die Ausgabe leer ist */
-.output:empty::before {
+.poem:empty::before {
   content: "VORSCHAU";
   font-family: var(--font-ui);
   font-size: 1rem;
   font-style: normal;
   color: #8a8a98;
+}
+
+/* Cursor der Ausgabe: weiß, wenn man in der Ausgabe arbeitet,
+   pink, wenn er nur die Position im Eingabefeld spiegelt */
+.out-caret {
+  position: absolute;
+  width: 2px;
+  background: var(--pink);
+  pointer-events: none;
+  z-index: 3;
+  animation: caret-blink-bg 1.1s steps(1) infinite;
+}
+.out-caret.is-active { background: #ffffff; }
+
+@keyframes caret-blink-bg {
+  50% { opacity: 0; }
+}
+
+/* Signal der Musik: invertiert das darunterliegende Zeichen */
+.play-marker {
+  position: absolute;
+  background: #ffffff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Eine Zeile der Ausgabe (eine pro <br>). Flex mit Umbruch: Elemente
@@ -496,7 +625,7 @@ body {
   min-width: 0;
   overflow-wrap: anywhere;
   font: 0.8rem var(--font-mono);
-  color: var(--flag-red-light);
+  color: var(--red-light);
 }
 
 /* Zufallswort + hold-Button: bleiben zusammen in einer Zeile */
@@ -576,8 +705,8 @@ body {
 
 /* "held": roter Button */
 .hold-btn[aria-pressed="true"] {
-  color: var(--flag-white);
-  background: var(--flag-red);
+  color: var(--white);
+  background: var(--red);
   box-shadow: var(--sunken);
   text-shadow: none;
 }
@@ -601,7 +730,142 @@ body {
   .scroller { scrollbar-color: var(--face) var(--face-dark); }
 }
 
-/* ---------- 10. Statusleiste + Ladebalken ---------- */
+/* ---------- 10. Musik rechts ---------- */
+
+/* Pattern: Zeilen = Schritte (laufen von unten nach oben durch die Mitte),
+   Spalten = Instrumente. Die markierte Zeile ist der aktuelle Schritt. */
+.pattern {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto repeat(21, minmax(0, 1fr));
+  gap: 2px;
+  padding: 0.5rem 0.6rem;
+  overflow: hidden;
+  font-size: 0.6rem;
+  color: #8a8a98;
+  background: #000000;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+}
+
+.pattern-row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 2px;
+  align-items: stretch;
+  padding: 0 2px;
+  min-height: 0;
+}
+
+.pattern-head span {
+  text-align: center;
+  padding-bottom: 3px;
+  font-weight: 700;
+  color: #8a8a98;
+  cursor: default;
+}
+
+.cell {
+  min-height: 0;
+  background: #141418;
+  border: 1px solid #26262c;
+}
+
+.cell.on {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+/* Bass: Balkenlänge = Tonhöhe */
+.cell.cell-bass.on {
+  background: linear-gradient(90deg, var(--fill, #ffffff) var(--w, 50%), #141418 var(--w, 50%));
+  border-color: #26262c;
+}
+
+/* Zeichen aus dem Text */
+.cell-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: #ffffff;
+  background: transparent;
+  border: 0;
+}
+
+.pattern-row.is-past .cell.on,
+.pattern-row.is-past .cell-glyph { opacity: 0.45; }
+
+.pattern-row.is-now {
+  background: rgba(255, 17, 102, 0.22);
+  outline: 1px solid var(--pink);
+}
+.pattern-row.is-now .cell.on {
+  background: var(--pink);
+  border-color: #ffffff;
+}
+.pattern-row.is-now .cell.cell-bass.on { --fill: var(--pink); }
+.pattern-row.is-now .cell-glyph { color: var(--pink); font-weight: 700; }
+
+/* Regler */
+.slider-row { display: flex; align-items: center; gap: 0.6rem; }
+
+.slider-value {
+  flex: 0 0 5.5ch;
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-align: right;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: #000;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 20px;
+  margin-top: -7px;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 3px;
+  box-shadow: var(--raised);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: #000;
+  border: 1px solid #000;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 18px;
+  background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
+  border: 1px solid #000;
+  border-radius: 3px;
+}
+
+input[type="range"]:focus-visible {
+  outline: 2px dotted #000;
+  outline-offset: 2px;
+}
+
+/* ---------- 11. Statusleiste + Ladebalken ---------- */
 /* Schließt direkt an die Fenster an (gleicher Abstand wie im Grid). */
 .statusbar {
   flex: 0 0 auto;
@@ -622,21 +886,21 @@ body {
   box-shadow: var(--sunken);
 }
 
-.status-field.is-warning { color: var(--flag-red); font-weight: bold; }
+.status-field.is-warning { color: var(--red); font-weight: bold; }
 
 .loader {
   width: 130px;
   height: 16px;
   border: 1px solid #000;
   box-shadow: var(--sunken);
-  background: repeating-linear-gradient(90deg, var(--flag-blue) 0 10px, transparent 10px 14px);
+  background: repeating-linear-gradient(90deg, var(--blue) 0 10px, transparent 10px 14px);
   background-size: 14px 100%;
   animation: loader-move 0.6s linear infinite;
 }
 
 @keyframes loader-move { to { background-position: 14px 0; } }
 
-/* ---------- 11. Footer: unterstes Element der Seite ---------- */
+/* ---------- 12. Footer: unterstes Element der Seite ---------- */
 .site-footer {
   flex: 0 0 auto;
   padding: 0.6rem 0.5rem 0;
@@ -658,24 +922,23 @@ body {
 /* Hover: schwarz – wie bei der Überschrift */
 .site-footer a:hover { color: #000; }
 
-/* ---------- 12. Layout ---------- */
-/* Feste Spaltenbreiten im Verhältnis 5 : 6 (Ausgabe etwas breiter, damit
-   "Zufallswort – Operator – Zufallswort" in eine Zeile passt).
+/* ---------- 13. Layout ---------- */
+/* Feste Spaltenbreiten im Verhältnis 5 : 6 : 4 (Eingabe, Ausgabe, Musik).
    minmax(0, …): Der Inhalt kann die Spalten nie verbreitern.
-   Eine einzige Zeile (minmax(0,1fr)): beide Fenster füllen die verfügbare
+   Eine einzige Zeile (minmax(0,1fr)): alle Fenster füllen die verfügbare
    Höhe und sind gleich hoch. */
 .layout {
   flex: 1 1 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr) minmax(0, 4fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
 }
 
-/* Schmale Bildschirme (Handy/Tablet): Fenster untereinander, Seite darf
-   hier normal scrollen; Eingabe und Ausgabe bekommen feste Höhen. */
-@media (max-width: 799px) {
+/* Schmale Bildschirme (Handy/Tablet/kleine Laptops): Fenster untereinander,
+   Seite darf hier normal scrollen; Eingabe, Ausgabe und Pattern bekommen feste Höhen. */
+@media (max-width: 1099px) {
   .page { height: auto; min-height: 100vh; }
   .layout {
     flex: 0 0 auto;
@@ -683,13 +946,16 @@ body {
     grid-template-rows: none;
   }
   .window-body { flex: 0 0 auto; }
-  .code-input  { flex: 0 0 auto; height: 260px; }
+  .editor      { flex: 0 0 auto; height: 260px; }
   .output      { flex: 0 0 auto; height: 320px; font-size: 1.1rem; }
+  .pattern     { flex: 0 0 auto; height: 420px; }
 }
 
-/* ---------- 13. Bewegungsreduzierung ---------- */
+/* ---------- 14. Bewegungsreduzierung ---------- */
 @media (prefers-reduced-motion: reduce) {
   .shuffle-word.flash,
   .shuffle.is-warning .shuffle-word,
+  .mirror-caret,
+  .out-caret,
   .loader { animation: none; }
 }
