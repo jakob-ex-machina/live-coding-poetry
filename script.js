@@ -32,14 +32,22 @@
        Zufallswörter nur aus eigenen Wörtern und Samples.
      - Eigene Wörter lassen sich per Semikolon gesammelt hinzufügen.
      - SAMPLE: Fremdtext wird gegen die Wortdatenbank abgeglichen; Treffer
-       (Singular + Plural) kommen farbig markiert in den Pool.
+       (Singular + Plural) kommen farbig markiert in den Pool. Es zählen nur
+       Nominativ-Formen. Einige als Substantiv gelistete Kleinwörter ("er",
+       "im", "ist" …) können trotzdem treffen (Datenlage, siehe normalizeEntry).
        Ein Klick auf den Sample-Chip fügt den passenden Bereichsbefehl ein.
+     - ALLES EINFRIEREN (Ausgabe): friert alle Zufallswörter auf einmal ein;
+       erneutes Drücken gibt alle frei, auch einzeln gehaltene.
      - Editor: Code-Farben, Klammerpaar-Farben nach Tiefe, Tab-Stopps,
        automatische Einrückung.
      - Cursor-Kopplung: Eingabe und Ausgabe zeigen einen parallelen Cursor.
        Die Ausgabe ist nicht beschreibbar.
      - Musik: Der Text der Ausgabe wird laufend in UTF-8-Bytes übersetzt
-       und als Beat (808/Techno) gespielt.
+       und als Beat (808/Techno) gespielt. Tempo und Lautstärke lassen sich
+       per Regler oder durch Eingabe einer ganzen Zahl einstellen.
+     - Weitere Einstellungen (drei Punkte in der Statusleiste):
+       Performance-Rampe – Tempo und/oder Lautstärke steigen in einer
+       gewählten Zeit vom Startwert zum Maximum.
    ===================================================================== */
 
 
@@ -96,14 +104,30 @@ const USED_HUE_TOLERANCE = 22;
 const TAB_SIZE = 2;
 const BRACKET_COLORS = 4;
 
-// Musik
+// Vorgewählte Markierungsfarben (der Nutzer kann sie jederzeit ändern):
+//   erstes Sample          rgb(202, 122, 132)
+//   eigene Wörter          rgb(122, 153, 202)
+// Weitere Samples bekommen automatische Farben (siehe nextAutoColor).
+const DEFAULT_SAMPLE_COLOR = "#ca7a84";
+const DEFAULT_OWN_COLOR = "#7a99ca";
+
+// Musik: Vorgaben und Grenzen (gelten für Regler, Zahlenfelder und Rampe)
 const MUSIC_DEFAULT_BPM = 128;
-const MUSIC_DEFAULT_VOLUME = 60;       // 0–100
+const MUSIC_MIN_BPM = 60;
+const MUSIC_MAX_BPM = 220;
+const MUSIC_DEFAULT_VOLUME = 60;
+const MUSIC_MIN_VOLUME = 0;
+const MUSIC_MAX_VOLUME = 100;
 const MUSIC_LOOKAHEAD_MS = 25;         // Takt des Planers
 const MUSIC_SCHEDULE_AHEAD = 0.2;      // Sekunden, die im Voraus geplant werden
 const PATTERN_ROWS = 21;               // sichtbare Schritte im Pattern
 const PATTERN_NOW_ROW = 6;             // Zeile des aktuellen Schritts (0 = oben)
 const FOLLOW_PAUSE_MS = 4000;          // so lange folgt die Ausgabe nach eigenem Scrollen nicht
+
+// Performance-Rampe (Weitere Einstellungen)
+const RAMP_DEFAULT_MINUTES = 5;
+const RAMP_MIN_MINUTES = 0.1;          // 6 Sekunden
+const RAMP_MAX_MINUTES = 600;          // 10 Stunden
 
 
 /* =====================================================================
@@ -144,9 +168,28 @@ const musicStatus = document.getElementById("music-status");
 const playBtn = document.getElementById("play-btn");
 const followBox = document.getElementById("follow-box");
 const tempoInput = document.getElementById("tempo-input");
-const tempoValue = document.getElementById("tempo-value");
+const tempoNumber = document.getElementById("tempo-number");
 const volumeInput = document.getElementById("volume-input");
-const volumeValue = document.getElementById("volume-value");
+const volumeNumber = document.getElementById("volume-number");
+
+const freezeBtn = document.getElementById("freeze-btn");
+
+const settingsBtn = document.getElementById("settings-btn");
+const settingsPanel = document.getElementById("settings-panel");
+const rampStatus = document.getElementById("ramp-status");
+const rampMinutes = document.getElementById("ramp-minutes");
+const rampMinutesReadout = document.getElementById("ramp-minutes-readout");
+const rampTempoOn = document.getElementById("ramp-tempo-on");
+const rampTempoStart = document.getElementById("ramp-tempo-start");
+const rampTempoTarget = document.getElementById("ramp-tempo-target");
+const rampVolumeOn = document.getElementById("ramp-volume-on");
+const rampVolumeStart = document.getElementById("ramp-volume-start");
+const rampVolumeTarget = document.getElementById("ramp-volume-target");
+const rampFill = document.getElementById("ramp-fill");
+const rampBar = rampFill.parentElement;
+const rampFeedback = document.getElementById("ramp-feedback");
+const rampStartBtn = document.getElementById("ramp-start-btn");
+const rampStopBtn = document.getElementById("ramp-stop-btn");
 
 // Overlays der Ausgabe: Cursor und Musik-Signal (liegen im scrollenden Feld)
 const caretEl = document.createElement("div");
@@ -186,7 +229,7 @@ const RESERVED_NAMES = [DB_NAME, OWN_NAME, ALL_NAME];
   und eine (vom Nutzer wählbare) Markierungsfarbe. Ändert sich die Farbe,
   gilt sie sofort für alle eigenen Wörter in der Ausgabe.
 */
-const ownSample = { source: "EIGENE WÖRTER", key: OWN_NAME, color: "#33ccff", count: 0 };
+const ownSample = { source: "EIGENE WÖRTER", key: OWN_NAME, color: DEFAULT_OWN_COLOR, count: 0 };
 
 /*
   Invertierte Lookup-Map (beim Laden gebaut):
@@ -328,11 +371,19 @@ function refreshStatus() {
 
 }
 
+// Schlüssel der "flexion" in der german-nouns-Datenbank, die einen Nominativ
+// beschreiben ("nominativ singular", "nominativ plural", auch mit Zusätzen
+// wie "nominativ singular 1", "nominativ plural*" oder "… stark").
+const NOMINATIVE_KEY = /^nominativ\s+(?:singular|plural)/i;
+
 /*
   Ein Eintrag der words.json kann sein:
     - ein String (Wortform)                       → nur diese Form
     - ein Objekt { lemma, singular, plural, flexion } (german-nouns)
-      → Singular + Plural (+ alle weiteren Formen aus "flexion")
+      → Lemma, Singular, Plural und alle Nominativ-Formen aus "flexion"
+  Für den Abgleich beim Sampling zählen NUR Nominativ-Formen. Genitiv-,
+  Dativ- und Akkusativformen (z. B. "Stäben", "Tisches") werden bewusst
+  nicht aufgenommen, sonst würde jede Beugungsform als Treffer gelten.
   Liefert { info, forms } oder null.
 */
 function normalizeEntry(item) {
@@ -356,7 +407,11 @@ function normalizeEntry(item) {
             flexion["nominativ plural 1"] || ""
         ).trim();
 
-        const forms = [lemma, singular, plural, ...Object.values(flexion)]
+        const nominatives = Object.entries(flexion)
+            .filter(([key]) => NOMINATIVE_KEY.test(key))
+            .map(([, form]) => form);
+
+        const forms = [lemma, singular, plural, ...nominatives]
             .filter(form => typeof form === "string" && form.trim())
             .map(form => form.trim());
 
@@ -882,6 +937,35 @@ function toggleHold(slot) {
 
 }
 
+/*
+  "ALLES EINFRIEREN": schaltet ALLE Zufallswörter auf einmal auf "held".
+  Erneutes Drücken gibt ALLE wieder frei – auch die, die vorher einzeln auf
+  "hold" gestellt wurden. Der Zustand wird in allFrozen gemerkt, damit
+  Zufallswörter, die man danach neu in den Code schreibt, ebenfalls
+  eingefroren sind. Einzelne Wörter lassen sich auch im eingefrorenen
+  Zustand über ihren eigenen Hold-Button freigeben.
+*/
+let allFrozen = false;
+
+function toggleFreezeAll() {
+
+    allFrozen = !allFrozen;
+
+    const now = performance.now();
+
+    for (const slot of slots) {
+        slot.held = allFrozen;
+        if (!allFrozen) slot.nextChange = now + slot.intervalMs;
+        updateSlotView(slot);
+    }
+
+    freezeBtn.setAttribute("aria-pressed", String(allFrozen));
+    freezeBtn.textContent = allFrozen ? "ALLES FREIGEBEN" : "ALLES EINFRIEREN";
+
+}
+
+freezeBtn.addEventListener("click", toggleFreezeAll);
+
 // Baut das DOM eines Zufallsworts samt Hold-Button
 function buildShuffleElement(slot) {
 
@@ -946,6 +1030,9 @@ function tick() {
     if (document.activeElement === codeInput && selectionKey() !== lastSelection) {
         syncFromInput(true);
     }
+
+    // Performance-Rampe (Tempo/Lautstärke) im gleichen Takt fortschreiben
+    updateRamp();
 
 }
 
@@ -1034,6 +1121,7 @@ function renderPoem() {
                     slots[slotIndex] = slot;
                     slot.intervalMs = token.seconds * 1000;
                     slot.nextChange = now + slot.intervalMs;
+                    slot.held = allFrozen;       // neue Wörter folgen dem globalen Einfrieren
                 }
 
                 // Wechselzeit im Code geändert → Zyklus neu starten
@@ -2253,6 +2341,9 @@ const isNear = (hue, list, tolerance) =>
 */
 function nextAutoColor() {
 
+    // Das erste Sample bekommt immer die feste Vorgabefarbe
+    if (samples.length === 0) return DEFAULT_SAMPLE_COLOR;
+
     const used = [...samples, ownSample].map(sample => hexToHue(sample.color));
 
     for (let i = 0; i < 80; i++) {
@@ -2440,7 +2531,7 @@ function sampleText() {
     sampleInput.value = "";
     setSampleFeedback(
         `${sample.count} WÖRTER AUS „${sample.source}“ ÜBERNOMMEN ` +
-        `(${hits.size} TREFFER VON ${tokens.length} WÖRTERN).`
+        `(${hits.size}/${tokens.length} TREFFER).`
     );
 
     renderSampleLegend();
@@ -2592,6 +2683,8 @@ const music = {
     bassBus: null,
     noise: null,
     playing: false,
+    bpm: MUSIC_DEFAULT_BPM,           // aktuelles Tempo (Kommazahl, die Rampe steigt weich)
+    volume: MUSIC_DEFAULT_VOLUME,     // aktuelle Lautstärke 0–100 (Kommazahl)
     position: 0,         // Index des nächsten Bytes im Text
     stepCounter: 0,      // laufender Schrittzähler (für Betonungen, unabhängig vom Text)
     nextTime: 0,         // Audiozeit des nächsten Schritts
@@ -2850,7 +2943,7 @@ function playStep(byte, time, step) {
 // ---------- Planer ----------
 
 function secondsPerStep() {
-    return 60 / Number(tempoInput.value) / 4;
+    return 60 / music.bpm / 4;
 }
 
 /*
@@ -2921,25 +3014,348 @@ playBtn.addEventListener("click", () => {
     else startMusic();
 });
 
-// ---------- Regler ----------
+// ---------- Regler und Zahlenfelder (Tempo, Lautstärke) ----------
 
+/*
+  Tempo und Lautstärke haben je genau einen Wert (music.bpm, music.volume).
+  Regler, Zahlenfeld und Performance-Rampe schreiben ihn über setTempo() /
+  setVolume(); die Anzeigen folgen. Intern bleibt der Wert eine Kommazahl
+  (damit die Rampe weich steigt), angezeigt wird er auf ganze Zahlen gerundet.
+  source = "number": Der Wert kommt aus dem Zahlenfeld und wird dort nicht
+  zurückgeschrieben (sonst würde das Feld beim Tippen überschrieben).
+*/
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function setTempo(value, source = "") {
+
+    music.bpm = clamp(value, MUSIC_MIN_BPM, MUSIC_MAX_BPM);
+
+    const shown = String(Math.round(music.bpm));
+
+    if (source !== "range" && tempoInput.value !== shown) tempoInput.value = shown;
+    if (source !== "number" && tempoNumber.value !== shown) tempoNumber.value = shown;
+
+}
+
+// Gain-Kurve: quadratisch, damit der Regler sich gleichmäßiger anfühlt
 function applyVolume() {
 
-    const value = Number(volumeInput.value) / 100;
-
-    volumeValue.textContent = String(volumeInput.value);
-
     if (music.master) {
-        music.master.gain.setTargetAtTime(value * value, music.ctx.currentTime, 0.02);
+        const level = music.volume / MUSIC_MAX_VOLUME;
+        music.master.gain.setTargetAtTime(level * level, music.ctx.currentTime, 0.02);
     }
 
 }
 
-tempoInput.addEventListener("input", () => {
-    tempoValue.textContent = `${tempoInput.value} BPM`;
+function setVolume(value, source = "") {
+
+    music.volume = clamp(value, MUSIC_MIN_VOLUME, MUSIC_MAX_VOLUME);
+
+    const shown = String(Math.round(music.volume));
+
+    if (source !== "range" && volumeInput.value !== shown) volumeInput.value = shown;
+    if (source !== "number" && volumeNumber.value !== shown) volumeNumber.value = shown;
+
+    applyVolume();
+
+}
+
+/*
+  Koppelt Regler und Zahlenfeld:
+    - Regler bewegen        → Wert sofort übernehmen
+    - Zahl tippen           → gültige ganze Zahlen im Bereich gelten sofort (live)
+    - Enter / Feld verlassen → zu kleine/große Zahlen werden auf die Grenze
+                               gesetzt, Kommazahlen gerundet, leere oder
+                               ungültige Eingaben auf den aktuellen Wert zurückgesetzt
+  Jede Bedienung von Hand beendet die Rampe für diesen Wert (siehe rampTakeOver).
+*/
+function bindControl({ range, number, min, max, set, current, kind }) {
+
+    range.addEventListener("input", () => {
+        rampTakeOver(kind);
+        set(Number(range.value), "range");
+    });
+
+    number.addEventListener("input", () => {
+
+        if (number.value.trim() === "") return;
+
+        const parsed = Math.round(Number(number.value));
+
+        if (Number.isFinite(parsed) && parsed >= min && parsed <= max) {
+            rampTakeOver(kind);
+            set(parsed, "number");
+        }
+
+    });
+
+    number.addEventListener("change", () => {
+
+        const parsed = Number(number.value);
+
+        if (number.value.trim() === "" || !Number.isFinite(parsed)) {
+            number.value = String(Math.round(current()));
+            return;
+        }
+
+        rampTakeOver(kind);
+        set(clamp(Math.round(parsed), min, max));
+
+    });
+
+}
+
+bindControl({
+    range: tempoInput, number: tempoNumber, kind: "tempo",
+    min: MUSIC_MIN_BPM, max: MUSIC_MAX_BPM,
+    set: setTempo, current: () => music.bpm
 });
 
-volumeInput.addEventListener("input", applyVolume);
+bindControl({
+    range: volumeInput, number: volumeNumber, kind: "volume",
+    min: MUSIC_MIN_VOLUME, max: MUSIC_MAX_VOLUME,
+    set: setVolume, current: () => music.volume
+});
+
+// Grenzen der Felder aus den Konstanten setzen (eine Quelle für HTML und Script)
+function configureMusicControls() {
+
+    for (const el of [tempoInput, tempoNumber, rampTempoStart]) {
+        el.min = String(MUSIC_MIN_BPM);
+        el.max = String(MUSIC_MAX_BPM);
+    }
+
+    for (const el of [volumeInput, volumeNumber, rampVolumeStart]) {
+        el.min = String(MUSIC_MIN_VOLUME);
+        el.max = String(MUSIC_MAX_VOLUME);
+    }
+
+    rampTempoTarget.textContent = `→ ${MUSIC_MAX_BPM} BPM`;
+    rampVolumeTarget.textContent = `→ ${MUSIC_MAX_VOLUME}`;
+
+    setTempo(MUSIC_DEFAULT_BPM);
+    setVolume(MUSIC_DEFAULT_VOLUME);
+
+}
+
+
+/* =====================================================================
+   15b. WEITERE EINSTELLUNGEN: PERFORMANCE-RAMPE
+   =====================================================================
+
+   Für Auftritte: Tempo und/oder Lautstärke steigen in einer gewählten
+   Zeit gleichmäßig (linear) vom Startwert zum Maximum (220 BPM bzw. 100).
+   Bei Zeit 0 gilt der Startwert, nach der gewählten Dauer das Maximum.
+
+   - "RAMPE STARTEN" setzt die Startwerte, startet die Musik (falls sie
+     pausiert) und startet die Uhr. Erneutes Drücken beginnt von vorn.
+   - Die Uhr läuft in Echtzeit und wird durch Pause der Musik nicht angehalten.
+   - Bedient man Regler oder Zahlenfeld eines Werts von Hand, übernimmt man
+     ihn: Die Rampe endet für diesen Wert (der andere läuft weiter).
+   - Nach Ablauf der Dauer endet die Rampe, die Werte bleiben auf dem Maximum.
+   =================================================================== */
+
+const ramp = {
+    active: false,
+    start: 0,            // performance.now() beim Start
+    duration: 0,         // Millisekunden
+    tempo: null,         // { from } solange Tempo hochgefahren wird, sonst null
+    volume: null         // { from } solange die Lautstärke hochgefahren wird, sonst null
+};
+
+// "05:00" aus Millisekunden
+function formatClock(ms) {
+    const total = Math.max(0, Math.round(ms / 1000));
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// Dauer in Minuten (Komma oder Punkt als Dezimaltrenner), NaN wenn ungültig
+function readRampMinutes() {
+    const text = String(rampMinutes.value).trim().replace(",", ".");
+    return text === "" ? NaN : Number(text);
+}
+
+function updateMinutesReadout() {
+
+    const minutes = readRampMinutes();
+
+    rampMinutesReadout.textContent =
+        minutes >= RAMP_MIN_MINUTES && minutes <= RAMP_MAX_MINUTES
+            ? `= ${formatClock(minutes * 60000)}`
+            : "= UNGÜLTIG";
+
+}
+
+// Ganze Zahl aus einem Startfeld lesen (auf Grenzen gesetzt); null, wenn leer/ungültig
+function readWhole(input, min, max) {
+
+    const parsed = Number(input.value);
+
+    if (input.value.trim() === "" || !Number.isFinite(parsed)) return null;
+
+    const value = clamp(Math.round(parsed), min, max);
+    input.value = String(value);
+
+    return value;
+
+}
+
+function setRampFeedback(message, isError = false) {
+    rampFeedback.textContent = message;
+    rampFeedback.classList.toggle("is-error", isError);
+}
+
+function updateRampUi(elapsed = 0, progress = 0) {
+
+    rampFill.style.width = `${(progress * 100).toFixed(1)}%`;
+    rampBar.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
+    rampStopBtn.disabled = !ramp.active;
+    rampStatus.hidden = !ramp.active;
+
+    if (!ramp.active) return;
+
+    const parts = [`RAMPE ${formatClock(elapsed)} / ${formatClock(ramp.duration)}`];
+
+    if (ramp.tempo) parts.push(`${Math.round(music.bpm)} BPM`);
+    if (ramp.volume) parts.push(`VOL ${Math.round(music.volume)}`);
+
+    const text = parts.join(" · ");
+
+    if (rampStatus.textContent !== text) rampStatus.textContent = text;
+
+}
+
+function startRamp() {
+
+    const minutes = readRampMinutes();
+
+    if (!(minutes >= RAMP_MIN_MINUTES && minutes <= RAMP_MAX_MINUTES)) {
+        setRampFeedback(
+            `DAUER: BITTE EINE ZAHL VON ${String(RAMP_MIN_MINUTES).replace(".", ",")} BIS ${RAMP_MAX_MINUTES} MINUTEN EINGEBEN.`,
+            true
+        );
+        return;
+    }
+
+    if (!rampTempoOn.checked && !rampVolumeOn.checked) {
+        setRampFeedback("BITTE TEMPO UND/ODER LAUTSTÄRKE AUSWÄHLEN.", true);
+        return;
+    }
+
+    const tempoFrom = readWhole(rampTempoStart, MUSIC_MIN_BPM, MUSIC_MAX_BPM);
+    const volumeFrom = readWhole(rampVolumeStart, MUSIC_MIN_VOLUME, MUSIC_MAX_VOLUME);
+
+    if ((rampTempoOn.checked && tempoFrom === null) || (rampVolumeOn.checked && volumeFrom === null)) {
+        setRampFeedback("BITTE GÜLTIGE STARTWERTE (GANZE ZAHLEN) EINGEBEN.", true);
+        return;
+    }
+
+    ramp.active = true;
+    ramp.start = performance.now();
+    ramp.duration = minutes * 60000;
+    ramp.tempo = rampTempoOn.checked ? { from: tempoFrom } : null;
+    ramp.volume = rampVolumeOn.checked ? { from: volumeFrom } : null;
+
+    // Startwerte sofort setzen, dann die Musik starten (falls sie pausiert)
+    if (ramp.tempo) setTempo(ramp.tempo.from);
+    if (ramp.volume) setVolume(ramp.volume.from);
+
+    if (!music.playing) startMusic();
+
+    setRampFeedback("RAMPE GESTARTET.");
+    updateRampUi(0, 0);
+
+}
+
+// Beendet die Rampe; die Werte bleiben, wie sie gerade sind
+function stopRamp(message, reached = false) {
+
+    ramp.active = false;
+    ramp.tempo = null;
+    ramp.volume = null;
+
+    setRampFeedback(message);
+    updateRampUi(0, reached ? 1 : 0);
+
+}
+
+// Von Hand bedienter Wert: die Rampe endet für ihn (der andere Wert läuft weiter)
+function rampTakeOver(kind) {
+
+    if (!ramp.active || !ramp[kind]) return;
+
+    ramp[kind] = null;
+
+    if (!ramp.tempo && !ramp.volume) {
+        stopRamp("RAMPE BEENDET: WERT VON HAND ÜBERNOMMEN.");
+        return;
+    }
+
+    setRampFeedback(
+        `${kind === "tempo" ? "TEMPO" : "LAUTSTÄRKE"} VON HAND ÜBERNOMMEN – ` +
+        `${kind === "tempo" ? "LAUTSTÄRKE" : "TEMPO"} STEIGT WEITER.`
+    );
+
+}
+
+// Wird vom Zeitgeber (tick) aufgerufen
+function updateRamp() {
+
+    if (!ramp.active) return;
+
+    const elapsed = performance.now() - ramp.start;
+    const progress = clamp(elapsed / ramp.duration, 0, 1);
+
+    if (ramp.tempo) {
+        setTempo(ramp.tempo.from + (MUSIC_MAX_BPM - ramp.tempo.from) * progress);
+    }
+
+    if (ramp.volume) {
+        setVolume(ramp.volume.from + (MUSIC_MAX_VOLUME - ramp.volume.from) * progress);
+    }
+
+    if (progress >= 1) {
+        stopRamp("MAXIMUM ERREICHT.", true);
+        return;
+    }
+
+    updateRampUi(elapsed, progress);
+
+}
+
+// ---------- Einstellungsfeld öffnen / schließen ----------
+
+function openSettings() {
+    settingsPanel.hidden = false;
+    settingsBtn.setAttribute("aria-expanded", "true");
+    rampMinutes.focus();
+}
+
+function closeSettings(returnFocus) {
+    settingsPanel.hidden = true;
+    settingsBtn.setAttribute("aria-expanded", "false");
+    if (returnFocus) settingsBtn.focus();
+}
+
+settingsBtn.addEventListener("click", () => {
+    if (settingsPanel.hidden) openSettings();
+    else closeSettings(true);
+});
+
+// Klick außerhalb schließt das Feld
+document.addEventListener("pointerdown", event => {
+    if (!settingsPanel.hidden && !settingsPanel.contains(event.target) && !settingsBtn.contains(event.target)) {
+        closeSettings(false);
+    }
+});
+
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !settingsPanel.hidden) closeSettings(true);
+});
+
+rampMinutes.addEventListener("input", updateMinutesReadout);
+rampStartBtn.addEventListener("click", startRamp);
+rampStopBtn.addEventListener("click", () => stopRamp("RAMPE BEENDET."));
 
 // ---------- Pattern (mitlaufende Anzeige) ----------
 
@@ -2950,23 +3366,20 @@ function buildPatternView() {
     patternEl.replaceChildren();
     patternRows.length = 0;
 
-    // Kopfzeile: Kürzel der Instrumente
-    const head = document.createElement("div");
-    head.className = "pattern-row pattern-head";
-
-    for (const drum of DRUMS) {
-        const label = document.createElement("span");
-        label.textContent = drum.label;
-        label.title = drum.name;
-        head.appendChild(label);
-    }
-
-    for (const [text, title] of [["BS", "BASS (BALKENLÄNGE = TONHÖHE)"], ["TX", "ZEICHEN IM TEXT"]]) {
+    // Spaltenreihenfolge (links → rechts): TX (Zeichen im Text), Instrumente, BS (Bass)
+    const addLabel = (head, text, title) => {
         const label = document.createElement("span");
         label.textContent = text;
         label.title = title;
         head.appendChild(label);
-    }
+    };
+
+    const head = document.createElement("div");
+    head.className = "pattern-row pattern-head";
+
+    addLabel(head, "TX", "ZEICHEN IM TEXT");
+    for (const drum of DRUMS) addLabel(head, drum.label, drum.name);
+    addLabel(head, "BS", "BASS (BALKENLÄNGE = TONHÖHE)");
 
     patternEl.appendChild(head);
 
@@ -2974,6 +3387,11 @@ function buildPatternView() {
 
         const row = document.createElement("div");
         row.className = "pattern-row";
+
+        // Gleiche Reihenfolge wie in der Kopfzeile: Zeichen, Instrumente, Bass
+        const glyph = document.createElement("div");
+        glyph.className = "cell-glyph";
+        row.appendChild(glyph);
 
         const cells = DRUMS.map(() => {
             const cell = document.createElement("div");
@@ -2985,10 +3403,6 @@ function buildPatternView() {
         const bass = document.createElement("div");
         bass.className = "cell cell-bass";
         row.appendChild(bass);
-
-        const glyph = document.createElement("div");
-        glyph.className = "cell-glyph";
-        row.appendChild(glyph);
 
         patternEl.appendChild(row);
         patternRows.push({ row, cells, bass, glyph });
@@ -3163,8 +3577,8 @@ renderSampleLegend();
 ownColor.value = ownSample.color;
 previewAutoColor();
 buildPatternView();
-applyVolume();
-tempoValue.textContent = `${tempoInput.value} BPM`;
+configureMusicControls();
+updateMinutesReadout();
 renderHighlight();
 renderPoem();
 
