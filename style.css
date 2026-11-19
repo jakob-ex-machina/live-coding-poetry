@@ -11,8 +11,8 @@
     7. Eingabe links (Editor, Code-Farben, Bausteine, eigene Wörter, Sample)
     8. Ausgabe in der Mitte (schwarz, weiße Wörter, pinke Operatoren, Cursor)
     9. Scroller (nur vertikal, einheitlich)
-   10. Musik rechts (Pattern, Regler)
-   11. Statusleiste + Ladebalken
+   10. Musik rechts (Pattern, Regler, Zahlenfelder)
+   11. Statusleiste + Ladebalken + Einstellungsfeld (Performance-Rampe)
    12. Footer
    13. Layout (feste Spaltenbreiten) + schmale Bildschirme
    14. Bewegungsreduzierung
@@ -199,6 +199,10 @@ body {
   background: transparent;
 }
 
+/* Reicht die Höhe nicht für alle Elemente (kleine Bildschirme), scrollt der
+   Fensterinhalt – nur vertikal und nur innerhalb des Fensters. */
+.window-body.scroller { overflow-x: hidden; overflow-y: auto; gap: 0.5rem; }
+
 /* ---------- 6. Klobige Buttons ---------- */
 .btn {
   display: inline-block;
@@ -233,6 +237,21 @@ body {
 }
 
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+/* Eingeschaltete Schalter-Buttons (z. B. "ALLES EINFRIEREN"): wie "held" – rot, eingedrückt */
+.btn[aria-pressed="true"],
+.btn[aria-pressed="true"]:hover {
+  color: var(--white);
+  background: var(--red);
+  box-shadow: var(--sunken);
+  text-shadow: none;
+}
+
+/* Geöffnetes Menü: Button bleibt eingedrückt */
+.btn[aria-expanded="true"] {
+  background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
+  box-shadow: var(--sunken);
+}
 
 .btn-small { font-size: 0.7rem; padding: 0.4em 0.8em; }
 
@@ -342,7 +361,7 @@ body {
   flex: 0 0 auto;
   margin: 0;
   min-width: 0;
-  padding: 0.4rem 0.7rem 0.5rem;
+  padding: 0.4rem 0.7rem 0.4rem;
   border: 2px groove #fff;
   display: flex;
   flex-direction: column;
@@ -360,7 +379,7 @@ body {
 .cheat-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: 0.2rem 0.3rem;            /* Zeilenabstand klein: spart Höhe in der schmalen Spalte */
 }
 
 .cheat-btn {
@@ -812,12 +831,31 @@ body {
 /* Regler */
 .slider-row { display: flex; align-items: center; gap: 0.6rem; }
 
-.slider-value {
-  flex: 0 0 5.5ch;
+.slider-unit {
+  flex: 0 0 3.2ch;
   font-size: 0.72rem;
   font-weight: bold;
-  text-align: right;
 }
+
+/* Zahlenfeld (Tempo, Lautstärke, Rampe): ohne Pfeil-Schaltflächen,
+   Pfeiltasten ändern den Wert trotzdem */
+.num-input {
+  flex: 0 0 auto;
+  width: 5.2em;
+  min-width: 0;
+  padding: 0.3em 0.5em;
+  font: bold 0.8rem var(--font-ui);
+  text-align: right;
+  color: #111;
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.num-input::-webkit-outer-spin-button,
+.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-input:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
 
 input[type="range"] {
   -webkit-appearance: none;
@@ -868,6 +906,7 @@ input[type="range"]:focus-visible {
 /* ---------- 11. Statusleiste + Ladebalken ---------- */
 /* Schließt direkt an die Fenster an (gleicher Abstand wie im Grid). */
 .statusbar {
+  position: relative;            /* Bezug für das Einstellungsfeld */
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -899,6 +938,68 @@ input[type="range"]:focus-visible {
 }
 
 @keyframes loader-move { to { background-position: 14px 0; } }
+
+/* Anzeige der laufenden Performance-Rampe (rechts neben der Statusmeldung) */
+.ramp-status {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-weight: bold;
+  color: var(--blue);
+}
+
+/* Weitere Einstellungen: Button mit drei quadratischen Punkten */
+.settings-btn { flex: 0 0 auto; padding: 0.5em 0.7em; }
+
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+.dots i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: #111;
+}
+
+/* Einstellungsfeld: öffnet sich über der Statusleiste, rechtsbündig */
+.settings-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.6rem);
+  width: min(400px, calc(100vw - 2rem));
+  z-index: 30;
+}
+.settings-panel .window-body { flex: 0 0 auto; }
+
+.hint { margin: 0; font-size: 0.7rem; line-height: 1.4; }
+
+/* Rampe: Beschriftung links, Felder rechts */
+.ramp-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.45rem 0.9rem;
+  align-items: center;
+  margin: 0.3rem 0;
+}
+.ramp-label { font-size: 0.72rem; font-weight: bold; }
+.ramp-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.ramp-unit { font-size: 0.72rem; font-weight: bold; }
+
+/* Fortschritt der Rampe: gleiche Streifen wie der Ladebalken */
+.ramp-bar {
+  height: 16px;
+  overflow: hidden;
+  background: var(--face);
+  border: 1px solid #000;
+  box-shadow: var(--sunken);
+}
+.ramp-fill {
+  width: 0;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--blue) 0 10px, transparent 10px 14px);
+}
 
 /* ---------- 12. Footer: unterstes Element der Seite ---------- */
 .site-footer {
