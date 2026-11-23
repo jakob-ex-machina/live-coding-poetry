@@ -12,7 +12,7 @@
     8. Ausgabe in der Mitte (schwarz, weiße Wörter, pinke Operatoren, Cursor)
     9. Scroller (nur vertikal, einheitlich)
    10. Musik rechts (Pattern, Regler, Zahlenfelder)
-   11. Statusleiste + Ladebalken + Einstellungsfeld (Performance-Rampe)
+   11. Statusleiste + Ladebalken + Einstellungsfeld (Performance-Rampe, Play-Button)
    12. Footer
    13. Layout (feste Spaltenbreiten) + schmale Bildschirme
    14. Bewegungsreduzierung
@@ -54,6 +54,8 @@
   --crt-op:        var(--pink);
   /* Signal "gleich wechselt das Wort" und "held": rot */
   --crt-signal:    var(--red);
+  /* Platzhalter "..." in der leeren Ausgabe: blasses Grau */
+  --crt-placeholder: #5c5c68;
 
   /* Klammerfarben im Code-Editor (nach Verschachtelungstiefe) */
   --bracket-0:  #ffd24d;
@@ -201,7 +203,7 @@ body {
 
 /* Reicht die Höhe nicht für alle Elemente (kleine Bildschirme), scrollt der
    Fensterinhalt – nur vertikal und nur innerhalb des Fensters. */
-.window-body.scroller { overflow-x: hidden; overflow-y: auto; gap: 0.5rem; }
+.window-body.scroller { overflow-x: hidden; overflow-y: auto; gap: 0.4rem; }
 
 /* ---------- 6. Klobige Buttons ---------- */
 .btn {
@@ -238,7 +240,7 @@ body {
 
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-/* Eingeschaltete Schalter-Buttons (z. B. "ALLES EINFRIEREN"): wie "held" – rot, eingedrückt */
+/* Eingeschaltete Schalter-Buttons (z. B. "ALLES HALTEN"): wie "held" – rot, eingedrückt */
 .btn[aria-pressed="true"],
 .btn[aria-pressed="true"]:hover {
   color: var(--white);
@@ -361,11 +363,11 @@ body {
   flex: 0 0 auto;
   margin: 0;
   min-width: 0;
-  padding: 0.4rem 0.7rem 0.4rem;
+  padding: 0.25rem 0.6rem 0.3rem;
   border: 2px groove #fff;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
 .groupbox legend {
@@ -383,10 +385,10 @@ body {
 }
 
 .cheat-btn {
-  font: bold 0.7rem var(--font-mono);
+  font: bold 0.66rem var(--font-mono);
   color: #111;
   text-transform: lowercase;   /* Ausnahme: Bausteine in Kleinbuchstaben */
-  padding: 0.3em 0.55em;
+  padding: 0.25em 0.45em;
   background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
   border: 1px solid #000;
   border-radius: 3px;
@@ -424,6 +426,11 @@ body {
   text-transform: uppercase;   /* auch die Eingabe in diesem Feld in Großbuchstaben */
 }
 
+/* Eigene Wörter: Das Textfeld belegt die ganze erste Zeile (flex-basis 100 %).
+   Farbwahl und Buttons rutschen darunter. So ist der Platzhalter-Hinweis
+   („WÖRTER MIT „;“ TRENNEN …“) immer vollständig lesbar. */
+.word-form .text-input { flex: 1 1 100%; }
+
 /* Checkbox */
 .check-row {
   display: flex;
@@ -435,7 +442,7 @@ body {
 }
 .check-row input { margin: 0; accent-color: var(--blue); cursor: pointer; }
 
-.feedback { margin: 0; min-height: 1.1em; font-size: 0.75rem; }
+.feedback { margin: 0; min-height: 1em; font-size: 0.72rem; }
 .feedback.is-error { color: var(--red); font-weight: bold; }
 
 /* Chip-Liste: begrenzte Höhe, bei vielen Wörtern vertikaler Scroller.
@@ -446,8 +453,8 @@ body {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  max-height: 2.9rem;
+  gap: 0.3rem;
+  max-height: 2.3rem;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -513,8 +520,8 @@ body {
 .sample-input {
   display: block;
   width: 100%;
-  min-height: 2.8rem;
-  max-height: 4.2rem;
+  min-height: 2.2rem;
+  max-height: 3.4rem;
   padding: 0.4em 0.6em;
   resize: none;
   overflow-x: hidden;
@@ -580,13 +587,13 @@ body {
   outline-offset: -4px;
 }
 
-/* Vorschau-Hinweis: wird nur angezeigt, solange die Ausgabe leer ist */
+/* Platzhalter: wird nur angezeigt, solange die Ausgabe leer ist.
+   Er erbt Schriftart, -größe und Zeilenhöhe der Ausgabe (font: inherit)
+   und unterscheidet sich nur durch die blasse graue Farbe. */
 .poem:empty::before {
-  content: "VORSCHAU";
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  font-style: normal;
-  color: #8a8a98;
+  content: "...";
+  font: inherit;
+  color: var(--crt-placeholder);
 }
 
 /* Cursor der Ausgabe: weiß, wenn man in der Ausgabe arbeitet,
@@ -963,12 +970,48 @@ input[type="range"]:focus-visible {
   background: #111;
 }
 
+/* Play-Button der Performance-Rampe (rechts neben den drei Punkten).
+   Gleiche Größe und gleicher Bevel-Stil wie der Einstellungs-Button.
+   Das Symbol besteht nur aus CSS:
+     idle / paused → Dreieck (Rampe starten bzw. fortsetzen)
+     running       → zwei Balken (Rampe pausieren)
+   Solange die Rampe läuft, bleibt der Button wie ein geöffnetes Menü
+   eingedrückt. */
+.ramp-play-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5em 0.7em;
+}
+
+.play-icon {
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent #111;
+}
+
+.ramp-play-btn[data-state="running"] {
+  background: linear-gradient(#b2b2c0, var(--face) 55%, #dcdce6);
+  box-shadow: var(--sunken);
+}
+
+.ramp-play-btn[data-state="running"] .play-icon {
+  width: 9px;
+  height: 10px;
+  border-width: 0 3px;
+  border-color: #111;
+}
+
 /* Einstellungsfeld: öffnet sich über der Statusleiste, rechtsbündig */
 .settings-panel {
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.6rem);
-  width: min(400px, calc(100vw - 2rem));
+  width: min(430px, calc(100vw - 2rem));
   z-index: 30;
 }
 .settings-panel .window-body { flex: 0 0 auto; }
@@ -984,7 +1027,8 @@ input[type="range"]:focus-visible {
   margin: 0.3rem 0;
 }
 .ramp-label { font-size: 0.72rem; font-weight: bold; }
-.ramp-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.ramp-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.ramp-field .num-input { width: 4.4em; }
 .ramp-unit { font-size: 0.72rem; font-weight: bold; }
 
 /* Fortschritt der Rampe: gleiche Streifen wie der Ladebalken */
