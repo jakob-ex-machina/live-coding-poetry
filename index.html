@@ -52,14 +52,14 @@
                       placeholder="&lt;shuffle-word&gt; &lt;equality-operator: &quot;==&quot;&gt; &lt;shuffle-word&gt;"></textarea>
           </div>
 
-          <!-- Werkzeugleiste: Leeren + GLOBALE Wortdatenbank-Option -->
+          <!--
+            Werkzeugleiste: GLOBALE Wortdatenbank-Option.
+            (Der frühere Button "EINGABE LEEREN" wurde entfernt: Er war
+            überflüssig und kostete in der schmalen Spalte Platz.)
+            Angehakt = die Wortdatenbank ist Teil des Zufallspools,
+            nicht angehakt = nur eigene Wörter und Samples.
+          -->
           <div class="toolbar">
-            <button type="button" id="clear-btn" class="btn">EINGABE LEEREN</button>
-
-            <!--
-              Gilt für die gesamte Ausgabe: angehakt = die Wortdatenbank ist
-              Teil des Zufallspools, nicht angehakt = nur eigene Wörter und Samples.
-            -->
             <label class="check-row"
                    title="NICHT ANGEHAKT: ZUFALLSWÖRTER KOMMEN NUR AUS EIGENEN WÖRTERN UND SAMPLES">
               <input type="checkbox" id="use-database" checked>
@@ -73,22 +73,26 @@
             <div id="cheat-buttons" class="cheat-buttons"></div>
           </fieldset>
 
-          <!-- Sampling: Fremdtext einspeisen (Titel steht über dem Textfeld) -->
+          <!--
+            Sampling: Fremdtext einspeisen (Titel steht über dem Textfeld).
+            Der Tooltip beschreibt nur den groben Mechanismus des Abgleichs.
+          -->
           <fieldset class="groupbox">
-            <legend title="ABGLICHEN WIRD NUR MIT SUBSTANTIVEN IM NOMINATIV (SINGULAR/PLURAL) AUS DER WORTDATENBANK. EINIGE KLEINWÖRTER WIE ER, ES, IM ODER IST SIND DORT ALS SUBSTANTIV GELISTET (Z. B. „DAS ER“, „DAS IM“) UND KÖNNEN DESHALB TREFFEN.">SAMPLE (SUBSTANTIVE, NOM. SG./PL.)</legend>
+            <legend title="DER FREMDTEXT WIRD IN EINZELNE WÖRTER ZERLEGT UND MIT DER WORTDATENBANK ABGEGLICHEN. ÜBERNOMMEN WERDEN VOR ALLEM SUBSTANTIVE IM NOMINATIV SINGULAR UND PLURAL.">SAMPLE</legend>
 
             <div class="sample-row">
               <input type="text" id="sample-source" class="text-input" maxlength="40"
                      placeholder="TITEL: FREMDTEXT" aria-label="Titel des Samples">
-              <input type="color" id="sample-color" class="color-input" value="#ca7a84"
+              <input type="color" id="sample-color" class="color-input" value="#ff6b81"
                      title="MARKIERUNGSFARBE (UNVERÄNDERT = AUTOMATISCH)" aria-label="Markierungsfarbe">
-              <button type="button" id="sample-btn" class="btn btn-small">SAMPLEN</button>
+              <button type="button" id="sample-btn" class="btn btn-small"
+                      title="ZERLEGT DEN FREMDTEXT IN WÖRTER UND GLEICHT SIE MIT DER WORTDATENBANK AB (VOR ALLEM SUBSTANTIVE IM NOMINATIV SINGULAR/PLURAL)">SAMPLEN</button>
             </div>
 
             <label for="sample-input" class="visually-hidden">Fremdtext einfügen</label>
-            <textarea id="sample-input" class="sample-input scroller" rows="2"
+            <textarea id="sample-input" class="sample-input scroller" rows="1"
                       spellcheck="false" autocomplete="off"
-                      placeholder="FREMDTEXT EINFÜGEN (Z. B. EIN GEDICHT) …&#10;HINWEIS: „ER“, „IM“ U. Ä. KÖNNEN TREFFEN."></textarea>
+                      placeholder="FREMDTEXT EINFÜGEN (Z. B. EIN GEDICHT) …"></textarea>
 
             <p id="sample-feedback" class="feedback" aria-live="polite"></p>
 
@@ -100,10 +104,15 @@
           <fieldset class="groupbox">
             <legend>EIGENE WÖRTER</legend>
 
+            <!--
+              Das Textfeld belegt eine eigene, volle Zeile (siehe style.css),
+              damit der Hinweistext im Platzhalter vollständig lesbar ist.
+              Farbwahl und Buttons stehen darunter.
+            -->
             <form id="word-form" class="word-form" autocomplete="off">
               <input type="text" id="word-input" class="text-input" maxlength="2000"
-                     placeholder="WORT ODER MEHRERE MIT „;“ TRENNEN …" aria-label="Neue Wörter (mehrere mit Semikolon trennen)">
-              <input type="color" id="own-color" class="color-input" value="#7a99ca"
+                     placeholder="WÖRTER MIT „;“ TRENNEN …" aria-label="Neue Wörter (mehrere mit Semikolon trennen)">
+              <input type="color" id="own-color" class="color-input" value="#5c9eff"
                      title="MARKIERUNGSFARBE DER EIGENEN WÖRTER" aria-label="Farbe der eigenen Wörter">
               <button type="submit" class="btn btn-small">HINZUFÜGEN</button>
               <button type="button" id="reset-words-btn" class="btn btn-small">ZURÜCKSETZEN</button>
@@ -133,11 +142,11 @@
             <button type="button" id="copy-btn" class="btn">AUSGABE KOPIEREN</button>
 
             <!--
-              Friert ALLE Zufallswörter auf einmal ein; erneutes Drücken gibt
+              Hält ALLE Zufallswörter auf einmal fest; erneutes Drücken gibt
               alle wieder frei – auch die einzeln auf "hold" gestellten.
             -->
             <button type="button" id="freeze-btn" class="btn" aria-pressed="false"
-                    title="FRIERT DEN GESAMTEN TEXT EIN; ERNEUT DRÜCKEN GIBT ALLE WÖRTER (AUCH EINZELN GEHALTENE) WIEDER FREI">ALLES EINFRIEREN</button>
+                    title="HÄLT DEN GESAMTEN TEXT FEST; ERNEUT DRÜCKEN GIBT ALLE WÖRTER (AUCH EINZELN GEHALTENE) WIEDER FREI">ALLES HALTEN</button>
           </div>
         </div>
       </section>
@@ -164,9 +173,9 @@
             <legend>TEMPO</legend>
             <!-- Regler und Zahlenfeld sind gekoppelt (Grenzen setzt script.js aus den Konstanten) -->
             <div class="slider-row">
-              <input type="range" id="tempo-input" min="60" max="220" step="1" value="128"
+              <input type="range" id="tempo-input" min="0" max="220" step="1" value="128"
                      aria-label="Tempo in Schlägen pro Minute (Regler)">
-              <input type="number" id="tempo-number" class="num-input" min="60" max="220" step="1" value="128"
+              <input type="number" id="tempo-number" class="num-input" min="0" max="220" step="1" value="128"
                      inputmode="numeric" aria-label="Tempo in Schlägen pro Minute (Zahl)">
               <span class="slider-unit">BPM</span>
             </div>
@@ -195,7 +204,7 @@
 
       <div id="loader" class="loader" role="progressbar" aria-label="Wortliste wird geladen"></div>
 
-      <!-- Weitere Einstellungen (drei Punkte, ganz rechts) -->
+      <!-- Weitere Einstellungen (drei Punkte) -->
       <button type="button" id="settings-btn" class="btn btn-small settings-btn"
               aria-haspopup="dialog" aria-expanded="false" aria-controls="settings-panel"
               aria-label="Weitere Einstellungen" title="WEITERE EINSTELLUNGEN">
@@ -203,9 +212,22 @@
       </button>
 
       <!--
+        Play-Button (ganz rechts): startet bzw. pausiert die Performance-Rampe,
+        ohne dass die Einstellungen geöffnet werden müssen.
+        data-state (idle | running | paused) steuert Symbol und Beschriftung
+        (Dreieck = starten/fortsetzen, zwei Balken = pausieren); das setzt script.js.
+      -->
+      <button type="button" id="ramp-play-btn" class="btn btn-small ramp-play-btn"
+              data-state="idle" aria-label="Performance-Rampe starten"
+              title="PERFORMANCE-RAMPE STARTEN">
+        <span class="play-icon" aria-hidden="true"></span>
+      </button>
+
+      <!--
         Einstellungsfeld: öffnet sich über der Statusleiste.
-        Enthält die Performance-Rampe: Tempo und/oder Lautstärke steigen in der
-        gewählten Zeit gleichmäßig vom Startwert zum Maximum.
+        Enthält die Performance-Rampe: Tempo und/oder Lautstärke wandern in der
+        gewählten Zeit gleichmäßig vom frei wählbaren Startwert zum frei
+        wählbaren Zielwert.
       -->
       <section id="settings-panel" class="window settings-panel" role="dialog"
                aria-label="Weitere Einstellungen" hidden>
@@ -215,8 +237,9 @@
             <legend>PERFORMANCE-RAMPE</legend>
 
             <p class="hint">
-              TEMPO UND/ODER LAUTSTÄRKE STEIGEN GLEICHMÄSSIG VOM STARTWERT ZUM MAXIMUM.
-              NACH DER GEWÄHLTEN DAUER IST DAS MAXIMUM ERREICHT.
+              TEMPO UND/ODER LAUTSTÄRKE WANDERN IN DER GEWÄHLTEN DAUER GLEICHMÄSSIG
+              VOM STARTWERT ZUM ZIELWERT (TEMPO 0–220 BPM, LAUTSTÄRKE 0–100).
+              DER PLAY-BUTTON RECHTS IN DER STATUSLEISTE STARTET / PAUSIERT DIE RAMPE.
             </p>
 
             <div class="ramp-grid">
@@ -236,9 +259,12 @@
               </label>
               <div class="ramp-field">
                 <span class="ramp-unit">VON</span>
-                <input type="number" id="ramp-tempo-start" class="num-input" min="60" max="220" step="1"
-                       value="128" inputmode="numeric" aria-label="Starttempo in BPM">
-                <span class="ramp-unit" id="ramp-tempo-target">→ 220 BPM</span>
+                <input type="number" id="ramp-tempo-start" class="num-input" min="0" max="220" step="1"
+                       value="0" inputmode="numeric" aria-label="Starttempo in BPM">
+                <span class="ramp-unit">BIS</span>
+                <input type="number" id="ramp-tempo-end" class="num-input" min="0" max="220" step="1"
+                       value="220" inputmode="numeric" aria-label="Zieltempo in BPM">
+                <span class="ramp-unit">BPM</span>
               </div>
 
               <label class="check-row ramp-label">
@@ -249,7 +275,10 @@
                 <span class="ramp-unit">VON</span>
                 <input type="number" id="ramp-volume-start" class="num-input" min="0" max="100" step="1"
                        value="0" inputmode="numeric" aria-label="Start-Lautstärke von 0 bis 100">
-                <span class="ramp-unit" id="ramp-volume-target">→ 100</span>
+                <span class="ramp-unit">BIS</span>
+                <input type="number" id="ramp-volume-end" class="num-input" min="0" max="100" step="1"
+                       value="100" inputmode="numeric" aria-label="Ziel-Lautstärke von 0 bis 100">
+                <span class="ramp-unit">%</span>
               </div>
 
             </div>
@@ -262,7 +291,8 @@
             <p id="ramp-feedback" class="feedback" aria-live="polite"></p>
 
             <div class="toolbar">
-              <button type="button" id="ramp-start-btn" class="btn btn-small">RAMPE STARTEN</button>
+              <button type="button" id="ramp-start-btn" class="btn btn-small"
+                      title="STARTET DIE RAMPE VON VORN">RAMPE STARTEN</button>
               <button type="button" id="ramp-stop-btn" class="btn btn-small" disabled>RAMPE BEENDEN</button>
             </div>
           </fieldset>
