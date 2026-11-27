@@ -238,44 +238,6 @@ body {
   outline-offset: 2px;
 }
 
-/* ---------- 7b-2. Dropdown der Operator-Familien ---------- */
-.cheat-dropdown { position: relative; display: inline-block; }
-
-.cheat-dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 20;
-  margin-top: 2px;
-  padding: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 100%;
-  background: var(--face);
-  border: 1px solid #000;
-  box-shadow: var(--raised), 3px 3px 0 rgba(0, 0, 0, 0.4);
-}
-
-.cheat-dropdown-item {
-  font: bold 0.8rem var(--font-mono);
-  text-transform: none;          /* Symbole unverändert, z. B. "E" */
-  text-align: left;
-  padding: 0.25em 0.6em;
-  color: #111;
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.cheat-dropdown-item:hover,
-.cheat-dropdown-item:focus-visible {
-  color: var(--white);
-  background: var(--blue);
-  outline: none;
-}
-
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
 /* Eingeschaltete Schalter-Buttons (z. B. "ALLES HALTEN"): wie "held" – rot, eingedrückt */
