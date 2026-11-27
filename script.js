@@ -301,18 +301,27 @@ let colorTouched = false;              // hat der Nutzer die Farbe selbst gewäh
     word   = Ausgabe im Gedicht
 */
 const OPERATORS = [
-    { type: "equality-operator",    symbol: "==", word: "wie" },
-    { type: "comparison-operator",  symbol: ">",  word: "größer als" },
-    { type: "comparison-operator",  symbol: "<",  word: "kleiner als" },
-    { type: "comparison-operator",  symbol: ">=", word: "größer oder gleich" },
-    { type: "comparison-operator",  symbol: "<=", word: "kleiner oder gleich" },
-    { type: "similarity-operator",  symbol: "~",  word: "ähnlich wie" },
-    { type: "analogy-operator",     symbol: "~~", word: "so wie" },
-    { type: "addition-operator",    symbol: "+",  word: "und" },
-    { type: "alternative-operator", symbol: "||", word: "oder" },
-    { type: "negation-operator",    symbol: "!=", word: "anders als" },
-    { type: "negation-operator",    symbol: "!",  word: "nicht" },
-    { type: "sequence-operator",    symbol: ">>", word: "dann" }
+    // Gleichheit / Vergleich / Analogie
+    { type: "equality-operator",       symbol: "==", word: "wie" },
+    { type: "comparison-operator",     symbol: ">",  word: "größer als" },
+    { type: "comparison-operator",     symbol: "<",  word: "kleiner als" },
+    { type: "analogy-operator",        symbol: "~~", word: "so wie" },
+
+    // Arithmetik (vormals addition-operator, jetzt mit "-" und "*")
+    { type: "arithmetic-operator",     symbol: "+",  word: "und" },
+    { type: "arithmetic-operator",     symbol: "-",  word: "ohne" },
+    { type: "arithmetic-operator",     symbol: "*",  word: "mal" },
+
+    // Logik
+    { type: "alternative-operator",    symbol: "||", word: "oder" },
+    { type: "negation-operator",       symbol: "!=", word: "anders als" },
+    { type: "negation-operator",       symbol: "!",  word: "nicht" },
+    { type: "implication-operator",    symbol: "=>", word: "folglich" },
+    { type: "implication-operator",    symbol: ">>", word: "dann" },   // vormals sequence-operator
+    { type: "exists-operator",         symbol: "E",  word: "es gibt" }, // ASCII-Ersatz für ∃
+
+    // Zuweisung
+    { type: "assignment-operator",     symbol: "=",  word: "wird zu" }
 ];
 
 // Sonderzeichen für reguläre Ausdrücke maskieren (z. B. "||" oder "+")
@@ -329,6 +338,47 @@ const OPERATOR_RULES = OPERATORS.map(op => ({
         "i"
     )
 }));
+
+/*
+  Operator-Familien (abgeleitet aus OPERATORS, einzige Quelle der Wahrheit):
+    Map: type → Liste der Operatoren, sortiert nach Typ und Symbol.
+  Eine Familie ist nie leer, da sie nur aus vorhandenen Operatoren entsteht.
+*/
+const OPERATOR_GROUPS = new Map();
+
+for (const op of [...OPERATORS].sort((a, b) =>
+    a.type !== b.type
+        ? (a.type < b.type ? -1 : 1)
+        : (a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 : 0)
+)) {
+    if (!OPERATOR_GROUPS.has(op.type)) OPERATOR_GROUPS.set(op.type, []);
+    OPERATOR_GROUPS.get(op.type).push(op);
+}
+
+// Baustein für genau einen Operator (Tooltip = tatsächliche Ausgabe)
+function operatorBlock(op) {
+    return {
+        text: `<${op.type}: "${op.symbol}">`,
+        hint: `WIRD AUSGEGEBEN ALS: ${op.word.toUpperCase()}`
+    };
+}
+
+/*
+  Eine Familie mit nur einem Operator wird ein normaler Button (ein Klick).
+  Bei mehreren Operatoren entsteht ein Dropdown: sichtbar nur das Symbol,
+  das Ausgabewort steht im title des jeweiligen Eintrags.
+*/
+function operatorFamilyBlock(type, ops) {
+
+    if (ops.length === 1) return operatorBlock(ops[0]);
+
+    return {
+        text: `<${type}: …>`,
+        hint: `OPERATOREN: ${type.replace(/-operator$/, "").toUpperCase()}`,
+        dropdown: ops.map(op => ({ label: op.symbol, block: operatorBlock(op) }))
+    };
+
+}
 
 /*
   Bausteine für das Baustein-Fenster (nur diese existieren):
@@ -351,17 +401,8 @@ const BLOCK_GROUPS = [
         { text: "<shuffle-word>", hint: "EIN ZUFALLSWORT, DAS SICH REGELMÄSSIG ÄNDERT" }
     ],
 
-    // 2. Operatoren (alphabetisch nach Typ, dann nach Symbol)
-    [...OPERATORS]
-        .sort((a, b) =>
-            a.type !== b.type
-                ? (a.type < b.type ? -1 : 1)
-                : (a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 : 0)
-        )
-        .map(op => ({
-            text: `<${op.type}: "${op.symbol}">`,
-            hint: `WIRD AUSGEGEBEN ALS: ${op.word.toUpperCase()}`
-        })),
+       // 2. Operatoren: eine Schaltfläche pro Familie (ggf. mit Dropdown)
+    [...OPERATOR_GROUPS].map(([type, ops]) => operatorFamilyBlock(type, ops)),
 
     // 3. Bereichsbefehle (öffnender Baustein + Schluss-Baustein, alphabetisch)
     [
@@ -687,8 +728,144 @@ function pickEntry(previous = "", sources = null) {
    6. BAUSTEINE (BAUSTEIN-FENSTER)
    ===================================================================== */
 
+// Aktuell geöffnetes Dropdown: { toggle, menu } oder null
+let openDropdown = null;
+
+function closeDropdown(returnFocus = false) {
+
+    if (!openDropdown) return;
+
+    const { toggle, menu } = openDropdown;
+
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+    openDropdown = null;
+
+    if (returnFocus) toggle.focus();
+
+}
+
+function openDropdownMenu(toggle, menu, focusFirst) {
+
+    // Ein anderes offenes Menü wird zuerst geschlossen
+    if (openDropdown) closeDropdown();
+
+    menu.hidden = false;
+    menu.style.left = "0";
+    menu.style.right = "auto";
+
+    // Ragt das Menü rechts aus dem Fenster, rechtsbündig öffnen
+    const container = cheatButtons.closest(".window-body") || document.body;
+
+    if (menu.getBoundingClientRect().right > container.getBoundingClientRect().right) {
+        menu.style.left = "auto";
+        menu.style.right = "0";
+    }
+
+    toggle.setAttribute("aria-expanded", "true");
+    openDropdown = { toggle, menu };
+
+    if (focusFirst) menu.querySelector(".cheat-dropdown-item").focus();
+
+}
+
+// Baut Familien-Button + Menü
+function buildDropdown(block) {
+
+    const wrap = document.createElement("span");
+    wrap.className = "cheat-dropdown";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "cheat-btn cheat-dropdown-toggle";
+    toggle.textContent = `${block.text} ▾`;
+    toggle.title = block.hint;
+    toggle.setAttribute("aria-haspopup", "menu");
+    toggle.setAttribute("aria-expanded", "false");
+
+    const menu = document.createElement("div");
+    menu.className = "cheat-dropdown-menu";
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+
+    for (const entry of block.dropdown) {
+
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "cheat-dropdown-item";
+        item.setAttribute("role", "menuitem");
+        item.textContent = entry.label;       // nur das Symbol
+        item.title = entry.block.hint;        // Ausgabewort nur im Tooltip
+
+        item.addEventListener("click", () => {
+            closeDropdown(false);
+            insertBlock(entry.block);
+        });
+
+        menu.appendChild(item);
+
+    }
+
+    // Klick (auch Enter/Space): öffnen bzw. schließen.
+    // event.detail === 0 = Tastatur → Fokus auf den ersten Eintrag.
+    toggle.addEventListener("click", event => {
+        if (openDropdown && openDropdown.toggle === toggle) {
+            closeDropdown(false);
+        } else {
+            openDropdownMenu(toggle, menu, event.detail === 0);
+        }
+    });
+
+    toggle.addEventListener("keydown", event => {
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            openDropdownMenu(toggle, menu, true);
+        }
+    });
+
+    // Pfeiltasten im Menü; Escape schließt und gibt den Fokus zurück
+    menu.addEventListener("keydown", event => {
+
+        const items = [...menu.querySelectorAll(".cheat-dropdown-item")];
+        const index = items.indexOf(document.activeElement);
+        let target = null;
+
+        switch (event.key) {
+            case "ArrowDown": target = items[(index + 1) % items.length]; break;
+            case "ArrowUp":   target = items[(index - 1 + items.length) % items.length]; break;
+            case "Home":      target = items[0]; break;
+            case "End":       target = items[items.length - 1]; break;
+            case "Escape":
+                event.preventDefault();
+                closeDropdown(true);
+                return;
+            case "Tab":
+                closeDropdown(true);   // Fokus zurück, Tab läuft normal weiter
+                return;
+            default: return;
+        }
+
+        event.preventDefault();
+        target.focus();
+
+    });
+
+    wrap.append(toggle, menu);
+
+    return wrap;
+
+}
+
+// Klick außerhalb schließt das offene Dropdown
+document.addEventListener("pointerdown", event => {
+    if (openDropdown && !openDropdown.toggle.parentElement.contains(event.target)) {
+        closeDropdown(false);
+    }
+});
+
 function createCheatButtons() {
 
+    openDropdown = null;
     cheatButtons.replaceChildren();
 
     BLOCK_GROUPS.forEach((group, groupIndex) => {
@@ -702,6 +879,12 @@ function createCheatButtons() {
         }
 
         group.forEach(block => {
+
+            // Familie mit mehreren Operatoren: Button + Dropdown
+            if (block.dropdown) {
+                cheatButtons.appendChild(buildDropdown(block));
+                return;
+            }
 
             const button = document.createElement("button");
 
