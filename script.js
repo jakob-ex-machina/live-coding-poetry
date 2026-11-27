@@ -2270,6 +2270,48 @@ function handleTab(outdent) {
 
 }
 
+// Position des Cursors direkt nach dem letzten "normalen" Enter (-1 = keine)
+let enterPos = -1;
+
+function handleEnter() {
+
+    const text = codeInput.value;
+    const start = codeInput.selectionStart;
+    const end = codeInput.selectionEnd;
+
+    const lineStart = lineStartOf(text, start);
+    const before = text.slice(lineStart, start);
+
+    // Zweites Enter direkt nach dem ersten: neue Zeile ohne Einrückung.
+    // Die (nur aus Leerraum bestehende) Zeile davor wird dabei geleert.
+    if (start === end && start === enterPos && /^[ \t]*$/.test(before)) {
+        codeInput.setSelectionRange(lineStart, start);
+        replaceSelection("\n");
+        enterPos = -1;                 // drittes Enter: wieder normales Verhalten
+        return;
+    }
+
+    const indent = before.match(/^[ \t]*/)[0];
+
+    const afterOpen = /<shuffle-(?:time|samplesize):[^<>]*>$/i.test(before.trimEnd());
+    const extra = afterOpen ? " ".repeat(TAB_SIZE) : "";
+    const betweenTags = afterOpen && /^<\/shuffle-(?:time|samplesize)>/i.test(text.slice(end));
+
+    if (betweenTags) {
+        const first = `\n${indent}${extra}`;
+        replaceSelection(`${first}\n${indent}`);
+        const position = start + first.length;
+        codeInput.setSelectionRange(position, position);
+        enterPos = position;
+        syncFromInput(true);
+        return;
+    }
+
+    replaceSelection(`\n${indent}${extra}`);
+    enterPos = codeInput.selectionStart;
+
+}
+
 /*
   Enter: übernimmt die Einrückung der Zeile. Nach einem öffnenden
   Bereichsbaustein wird zusätzlich eingerückt; steht der Cursor genau
@@ -2312,6 +2354,9 @@ let tabEscape = false;
 codeInput.addEventListener("keydown", event => {
 
     if (event.isComposing) return;
+
+       // Jede andere Taste (außer Enter und reinen Modifikatoren) beendet die Enter-Folge
+    if (event.key !== "Enter" && !["Shift", "Control", "Alt", "Meta"].includes(event.key)) enterPos = -1;
 
     if (event.key === "Escape") {
         tabEscape = true;
