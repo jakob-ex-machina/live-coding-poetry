@@ -382,12 +382,15 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem 0.3rem;            /* Zeilenabstand klein: spart Höhe in der schmalen Spalte */
+  align-items: stretch;          /* Buttons in einer Zeile gleich hoch */
 }
 
 .cheat-btn {
+  flex: 1 1 auto;                /* NEU: Buttons wachsen und füllen die Zeile */
+  min-width: 6.5em;              /* NEU: verhindert Winzlinge bei kurzen Tags */
   font: bold 0.66rem var(--font-mono);
   color: #111;
-  text-transform: lowercase;   /* Ausnahme: Bausteine in Kleinbuchstaben */
+  text-transform: lowercase;     /* Ausnahme: Bausteine in Kleinbuchstaben */
   padding: 0.25em 0.45em;
   background: linear-gradient(#f6f6fa, var(--face) 55%, #b2b2c0);
   border: 1px solid #000;
@@ -395,15 +398,21 @@ body {
   box-shadow: var(--raised);
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;              /* NEU: falls ein Tag zu lang ist */
+  text-overflow: ellipsis;       /* NEU: … statt Überlauf */
+  text-align: center;            /* NEU: gleichmäßiger Look bei unterschiedlichen Breiten */
+  box-sizing: border-box;        /* NEU: padding zählt zur Breite */
 }
 
-/* Trenner zwischen den Baustein-Kategorien (kostet keine zusätzliche Zeile) */
+/* Trenner zwischen den Baustein-Kategorien: eigene Zeile, dünne Linie */
 .cheat-sep {
-  align-self: stretch;
-  width: 2px;
-  margin: 0 0.25rem;
+  flex: 0 0 100%;                /* NEU: erzwingt Zeilenumbruch, volle Breite */
+  height: 1px;                   /* NEU: dünne horizontale Linie statt vertikalem Strich */
+  margin: 0.15rem 0;             /* NEU: etwas Luft oben/unten */
   background: var(--face-shadow);
-  box-shadow: 1px 0 0 var(--face-light);
+  box-shadow: 0 1px 0 var(--face-light);   /* NEU: dezenter 3D-Effekt wie die Buttons */
+  align-self: stretch;           /* bleibt, schadet nicht */
+  width: auto;                   /* NEU: überschreibt das alte width: 2px */
 }
 
 .cheat-btn:hover { background: linear-gradient(#ffffff, #d4d4de 55%, #bcbccb); }
